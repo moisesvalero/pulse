@@ -91,7 +91,9 @@ export const VOICE_PRESETS: Record<TrackId, VoicePreset> = {
 		q: 2,
 		filterEnvAmount: 900,
 		filterEnvDecay: 0.6,
-		amp: { attack: 0.35, decay: 0.5, sustain: 0.7, release: 1.1 },
+		// Attack stays inside one 16th note even at the slowest tempo, otherwise
+		// the pad would never reach its peak when a step gates it.
+		amp: { attack: 0.1, decay: 0.3, sustain: 0.6, release: 1.1 },
 		glide: 0.08,
 		level: 0.3
 	},
