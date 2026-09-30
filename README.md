@@ -196,6 +196,7 @@ La primera medición dio 65 en rendimiento y 930 ms de bloqueo, con 2,1 s de eva
 - **Despliegue en subdirectorio**: ver la nota de arriba.
 - **Las voces son monofónicas.** Es una decisión de diseño (permite *glide* y no asigna nodos por nota), no una limitación técnica; un pad polifónico necesitaría un *voice allocator*.
 - No hay *swing* por pista, ni lanes de acento, ni longitud de nota por paso.
+- **Una alerta de Dependabot abierta, de severidad baja y sin exposición real.** `cookie@0.6.0` entra por `@sveltejs/kit` (GHSA-pxg6-pf52-xh8x, corregida en `0.7.0`). Es una dependencia de **desarrollo**: el build estático no incluye código de servidor, así que no llega al navegador ni procesa cookies en producción porque no hay servidor. La última versión **estable** de SvelteKit (2.70.3) sigue fijando `^0.6.0`; el arreglo sólo está en los pre-releases de SvelteKit 3. Se ha preferido **no** forzar un `pnpm.overrides` fuera del rango declarado por el framework para no introducir un riesgo mayor que el que resuelve: la alerta desaparecerá al actualizar a SvelteKit 3 estable.
 
 ### Estructura
 
@@ -399,6 +400,7 @@ The first run scored 65 for performance with 930 ms of blocking time and 2.1 s o
 - **Subdirectory deployment**: see the note above.
 - **Voices are monophonic.** That is a design choice (it enables *glide* and allocates nothing per note), not a technical limit; a polyphonic pad would need a voice allocator.
 - No per-lane swing, no accent lanes, no per-step note length.
+- **One open Dependabot alert, low severity, with no real exposure.** `cookie@0.6.0` comes in through `@sveltejs/kit` (GHSA-pxg6-pf52-xh8x, patched in `0.7.0`). It is a **development** dependency: the static build contains no server code, so it never reaches the browser and never processes cookies in production, because there is no server. The latest **stable** SvelteKit (2.70.3) still pins `^0.6.0`; the fix only exists in the SvelteKit 3 pre-releases. Forcing a `pnpm.overrides` outside the range the framework declares was deliberately avoided, since it would introduce more risk than it removes: the alert will clear when SvelteKit 3 ships stable.
 
 ### Layout
 

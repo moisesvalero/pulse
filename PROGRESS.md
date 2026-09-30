@@ -248,6 +248,7 @@ CHROME_PATH="$HOME/Library/Caches/ms-playwright/chromium-1243/chrome-mac-arm64/G
 - **Vercel:** proyecto `pulse` en el equipo `moisesvs84-6837s-projects`, con **integración Git conectada**: cada push a `main` despliega solo.
 - **Configuración:** `vercel.json` con `framework: null` (el preset de SvelteKit espera `adapter-vercel` y aquí se usa `adapter-static`, así que se trata como sitio estático) y `outputDirectory: build`. `.vercelignore` deja fuera de la subida unos 17 MB de artefactos locales.
 - **URL de producción:** <https://pulse-blond-chi.vercel.app> — comprobada con una petición real: `200`, HTML de 74.954 B idéntico al `build/index.html` local, la fuente se sirve (48.432 B) y no hay pantalla de autenticación.
+- **Dependabot:** una alerta abierta, severidad **baja**, `cookie@0.6.0` vía `@sveltejs/kit` (GHSA-pxg6-pf52-xh8x, parcheada en 0.7.0). Alcance `development`: no entra en el bundle del navegador y no hay servidor, así que la exposición real es nula. La última estable de SvelteKit (2.70.3) sigue con `^0.6.0`; sólo los pre-releases de SvelteKit 3 usan `cookie@^2`. Decisión: **no** forzar un override fuera del rango del framework; documentarlo y esperar a SvelteKit 3 estable.
 - **Nota de método:** el CLI de Vercel avisa de "Deployment Protection is on" y leí `ssoProtection.deploymentType = all_except_custom_domains`. Concluí, sin comprobarlo, que el sitio no era público. **Era falso.** La lección: pedir la URL antes de sacar conclusiones de un aviso del CLI. El usuario tenía razón.
 
 ## 8. Siguiente paso
