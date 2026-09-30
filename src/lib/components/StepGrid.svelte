@@ -165,7 +165,7 @@
 >
 	<table
 		bind:this={grid}
-		class="w-full min-w-[34rem] border-separate border-spacing-1 p-2 select-none"
+		class="w-full min-w-[34rem] table-fixed border-separate border-spacing-1 p-2 select-none"
 		style="touch-action: pan-x;"
 	>
 		<caption class="sr-only">
@@ -175,7 +175,7 @@
 
 		<thead>
 			<tr>
-				<td class="w-[4.5rem]"></td>
+				<td class="sticky left-0 z-10 w-[3.75rem] bg-abyss/80 backdrop-blur-sm sm:w-[4.5rem]"></td>
 				{#each STEP_INDICES as step (step)}
 					<th
 						scope="col"
@@ -196,7 +196,16 @@
 				{@const color = TRACK_COLORS[track]}
 				{@const melodic = isMelodic(track)}
 				<tr>
-					<th scope="row" class="pr-2 text-left align-middle font-normal">
+					<!--
+						Sticky so the lane name stays visible while the grid is scrolled
+						horizontally: on a 390 px phone only about eleven steps fit, and a
+						row of unlabelled cells is unusable. The solid background is what
+						keeps the cells from showing through underneath.
+					-->
+					<th
+						scope="row"
+						class="sticky left-0 z-10 w-[3.25rem] bg-abyss/95 pr-2 text-left align-middle font-normal backdrop-blur-sm sm:w-[4.5rem]"
+					>
 						<span class="flex items-center gap-1.5">
 							<span
 								aria-hidden="true"
@@ -230,7 +239,9 @@
 								onclick={(event) => handleClick(event, track, step)}
 								onkeydown={handleKeyDown}
 								class={cn(
-									'group relative flex h-9 w-full items-center justify-center rounded-[0.4rem] border text-[0.5625rem] transition-[transform,background-color,border-color,box-shadow] duration-150 ease-out-expo',
+									// h-10 on touch: WCAG 2.5.8 asks for 24x24 CSS px minimum
+									// targets, and the width is capped by how many steps fit.
+									'group relative flex h-10 w-full items-center justify-center rounded-[0.4rem] border text-[0.5625rem] transition-[transform,background-color,border-color,box-shadow] duration-150 ease-out-expo sm:h-9',
 									'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent active:scale-95',
 									active
 										? 'border-transparent'

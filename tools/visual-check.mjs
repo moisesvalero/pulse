@@ -545,6 +545,45 @@ async function main() {
 			)
 		);
 		await mobilePage.screenshot({ path: join(OUT_DIR, 'mobile-studio.png'), fullPage: true });
+
+		// WCAG 2.5.8 (target size, minimum): every interactive control must offer a
+		// hit area of at least 24x24 CSS px on a phone.
+		record(
+			'mobileTouchTargets',
+			await mobilePage.evaluate(() => {
+				const tooSmall = [];
+				// Reported with one decimal: 23.6 rounds to 24 but still fails the rule.
+				for (const element of document.querySelectorAll('button, input[type="range"]')) {
+					const box = element.getBoundingClientRect();
+					if (box.width === 0 && box.height === 0) continue;
+					if (box.width < 24 || box.height < 24) {
+						tooSmall.push(
+							`${element.tagName.toLowerCase()} ${box.width.toFixed(1)}x${box.height.toFixed(1)}`
+						);
+					}
+				}
+				return tooSmall;
+			})
+		);
+
+		// The lane labels must stay pinned while the grid scrolls sideways, or the
+		// rows become unlabelled on a narrow screen.
+		await mobilePage.evaluate(() => {
+			const scroller = document.querySelector('[data-cell]')?.closest('.overflow-x-auto');
+			if (scroller) scroller.scrollLeft = 240;
+		});
+		await mobilePage.waitForTimeout(200);
+		record(
+			'mobileLaneLabelPinned',
+			await mobilePage.evaluate(() => {
+				const label = document.querySelector('th[scope="row"]');
+				if (!label) return null;
+				const box = label.getBoundingClientRect();
+				// Still inside the viewport after scrolling 240 px to the right.
+				return box.left >= -1 && box.left < 60;
+			})
+		);
+		await mobilePage.screenshot({ path: join(OUT_DIR, 'mobile-scrolled.png') });
 		await mobile.close();
 
 		// --- reduced motion -------------------------------------------------

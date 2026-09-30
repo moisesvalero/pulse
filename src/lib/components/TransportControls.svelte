@@ -25,7 +25,7 @@
 
 <section
 	aria-label="Transporte"
-	class="flex flex-col gap-4 rounded-panel border border-hairline/70 bg-panel/70 p-4 backdrop-blur-md"
+	class="flex flex-col gap-4 rounded-panel border border-hairline/70 bg-panel/70 p-3 backdrop-blur-md sm:p-4"
 >
 	<div class="flex items-center gap-3">
 		<button

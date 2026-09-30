@@ -30,7 +30,7 @@
 
 <section
 	aria-label="Mezcla y efectos"
-	class="flex flex-col gap-4 rounded-panel border border-hairline/70 bg-panel/70 p-4 backdrop-blur-md"
+	class="flex flex-col gap-4 rounded-panel border border-hairline/70 bg-panel/70 p-3 backdrop-blur-md sm:p-4"
 >
 	<div class="flex items-baseline justify-between">
 		<h2 class="font-display text-[0.6875rem] tracking-[0.14em] text-dim uppercase">

@@ -85,7 +85,7 @@
 		aria-describedby={description ? `${id}-description` : undefined}
 		oninput={handleInput}
 		style="--range-fill: {percent}%; --range-accent: {accent};"
-		class="h-4 w-full"
+		class="h-6 w-full sm:h-5"
 	/>
 
 	{#if description}
