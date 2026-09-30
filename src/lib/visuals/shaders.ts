@@ -133,3 +133,112 @@ void main() {
 	gl_Position = vec4(a_position, 0.0, 1.0);
 }
 `;
+
+/**
+ * Mode: radial waves.
+ *
+ * Concentric wavefronts travelling outwards. Bass speeds them up and opens the
+ * falloff, mid bends the wavefronts so they stop being perfect circles, and
+ * treble overlays a fine ripple.
+ */
+export const RIPPLES_FRAGMENT = `${COMMON}
+void main() {
+	vec2 uv = centredUv();
+	float radius = length(uv);
+
+	// Bass makes the wavefronts travel further and faster.
+	float speed = 1.2 + u_bands.x * 3.2;
+	float spacing = 9.0 - u_bands.x * 3.0;
+	float phase = radius * spacing - u_time * speed;
+
+	// Mid band warps the rings through the noise field, which is what stops the
+	// mode from looking like a plain target.
+	float warp = valueNoise(vec3(uv * 1.6, u_time * 0.25)) * (0.30 + u_bands.y * 1.25);
+
+	// Sharpen the crests: a sine would read as a soft blur, not as a wavefront.
+	float wave = sin(phase + warp * 2.2);
+	float crest = pow(max(wave, 0.0), 2.6);
+
+	// Treble rides on top as fine concentric ripples.
+	float ripple = 0.5 + 0.5 * sin(radius * 42.0 - u_time * 5.0);
+	crest += ripple * u_bands.z * 0.30;
+
+	// Waves fade with distance; a bass hit pushes the fade further out.
+	float falloff = exp(-radius * (1.15 - u_bands.x * 0.25));
+
+	vec3 color = COLOR_VOID;
+	color += COLOR_LEAD * crest * falloff * (0.55 + u_level * 1.5);
+	color += COLOR_BASS * pow(crest, 3.0) * falloff * (0.45 + u_bands.x * 1.6);
+	color += COLOR_PAD * u_bands.y * falloff * 0.30;
+
+	// Core flash: the origin of every wave, lit by the kick.
+	color += COLOR_HAT * smoothstep(0.22, 0.0, radius) * (0.14 + u_bands.x * 1.2);
+
+	// A dim core so the middle of the field is not a hole next to the other modes,
+	// which are all brightest at the centre.
+	color += COLOR_HAT * smoothstep(0.26, 0.0, radius) * (0.10 + u_bands.x * 1.0);
+
+	gl_FragColor = vec4(vignette(color, uv), 1.0);
+}
+`;
+
+/**
+ * Mode: particle field.
+ *
+ * One point per cell of a hash-jittered polar grid, scrolled along the radial
+ * axis so the field streams outwards. Three layers at different scales give a
+ * sense of depth without any geometry.
+ */
+export const PARTICLES_FRAGMENT = `${COMMON}
+/** Brightness of one layer of stars at a given polar coordinate. */
+float starLayer(vec2 polar, float scale, float seed) {
+	vec2 p = polar * scale + seed;
+	vec2 cell = floor(p);
+	vec2 local = fract(p) - 0.5;
+
+	// One point per cell, jittered, so the field never looks like a grid.
+	vec2 jitter = vec2(hash13(vec3(cell, seed)), hash13(vec3(cell, seed + 31.0))) - 0.5;
+	float radius = length(local - jitter * 0.55);
+
+	float size = 0.035 + hash13(vec3(cell, seed + 7.0)) * 0.075;
+	// Per-star twinkle phase: the field shimmers instead of pulsing in unison.
+	float twinkle = 0.55 + 0.45 * sin(u_time * (1.5 + hash13(vec3(cell, seed + 3.0)) * 4.0) + seed);
+
+	return smoothstep(size, 0.0, radius) * twinkle;
+}
+
+void main() {
+	vec2 uv = centredUv();
+	float radius = length(uv);
+	float angle = atan(uv.y, uv.x);
+
+	// Bass accelerates the outward stream.
+	float stream = u_time * (0.35 + u_bands.x * 1.9);
+	vec2 polar = vec2(angle * 4.0, radius * 7.0 - stream * 2.2);
+
+	float stars = 0.0;
+	stars += starLayer(polar, 1.0, 0.0);
+	stars += starLayer(polar, 1.9, 11.0) * 0.7;
+	stars += starLayer(polar, 3.3, 23.0) * 0.45;
+
+	// atan() wraps at +-PI, which would show as a seam of shifted stars along the
+	// negative X axis. Tapering the field there hides it, and the vignette covers
+	// what is left.
+	stars *= smoothstep(3.1416, 2.35, abs(angle));
+
+	// Treble makes the points sparkle; mid band sets the depth fade.
+	float sparkle = 0.55 + u_bands.z * 1.7;
+	float falloff = exp(-radius * (0.95 - u_bands.x * 0.22));
+
+	vec3 color = COLOR_VOID;
+
+	// A slow nebula behind the stars, so the frame is never empty.
+	float nebula = fbm(vec3(uv * 1.35, u_time * 0.12));
+	color += COLOR_BASS * nebula * (0.30 + u_bands.x * 0.75) * (0.35 + u_level * 1.1);
+
+	color += COLOR_LEAD * stars * sparkle * falloff * (0.85 + u_level * 1.5);
+	color += COLOR_PAD * pow(stars, 2.0) * falloff * (0.35 + u_bands.y * 1.4);
+
+	gl_FragColor = vec4(vignette(color, uv), 1.0);
+}
+`;

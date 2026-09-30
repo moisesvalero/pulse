@@ -186,12 +186,15 @@ async function main() {
 		// shader is not running (or the CSS fallback is showing).
 		const canvasBox = await page.locator('canvas').boundingBox();
 		// Kept in the outer scope: the audio-reactivity check below reuses it.
+		// Centred on the canvas: every mode is radial, so the interesting pixels are
+		// around the middle, not in the top-left corner.
+		const clipSize = { width: 820, height: 480 };
 		const canvasClip = canvasBox
 			? {
-					x: Math.round(canvasBox.x),
-					y: Math.round(canvasBox.y),
-					width: Math.round(Math.min(canvasBox.width, 900)),
-					height: Math.round(Math.min(canvasBox.height, 520))
+					x: Math.round(canvasBox.x + (canvasBox.width - clipSize.width) / 2),
+					y: Math.round(canvasBox.y + (canvasBox.height - clipSize.height) / 2),
+					width: Math.round(Math.min(canvasBox.width, clipSize.width)),
+					height: Math.round(Math.min(canvasBox.height, clipSize.height))
 				}
 			: { x: 0, y: 0, width: 640, height: 360 };
 
@@ -291,6 +294,33 @@ async function main() {
 		record('playheadDuringLiveTweaks', [firstReading, secondReading]);
 		record('transportSurvivedLiveTweaks', firstReading !== secondReading);
 		record('bpmAfterTweak', await page.locator('#control-bpm').inputValue());
+
+		// --- visual modes ----------------------------------------------------
+		// Each mode must compile and draw something different: identical hashes
+		// would mean the switcher is cosmetic.
+		const modeHashes = {};
+		for (const id of ['tunnel', 'ripple', 'particles']) {
+			const button = page.locator(`[data-visual-mode="${id}"]`);
+			if ((await button.count()) === 0) {
+				fail(`Visual mode button "${id}" is missing.`);
+				continue;
+			}
+
+			await button.click();
+			await page.waitForTimeout(500);
+
+			const frame = await page.screenshot({ clip: canvasClip });
+			modeHashes[id] = hash(frame).slice(0, 12);
+			await writeFile(join(OUT_DIR, `canvas-mode-${id}.png`), frame);
+			// Full page too, so the mode can be judged against the interface.
+			await page.screenshot({ path: join(OUT_DIR, `mode-${id}-full.png`) });
+		}
+		record('visualModeHashes', modeHashes);
+		record('visualModesAreDistinct', new Set(Object.values(modeHashes)).size === 3);
+
+		// Back to the default before the audio comparison below.
+		await page.locator('[data-visual-mode="tunnel"]').click();
+		await page.waitForTimeout(300);
 
 		// --- audio actually reaches the shaders ------------------------------
 		// The meters publish the exact numbers the fragment shader receives, so

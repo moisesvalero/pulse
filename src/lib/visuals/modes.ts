@@ -1,4 +1,4 @@
-import { TUNNEL_FRAGMENT } from './shaders';
+import { PARTICLES_FRAGMENT, RIPPLES_FRAGMENT, TUNNEL_FRAGMENT } from './shaders';
 
 /**
  * Visual modes. Each one is a fragment shader that honours the uniform contract
@@ -22,6 +22,18 @@ export const VISUAL_MODES: readonly VisualMode[] = [
 		label: 'Túnel',
 		description: 'Túnel de ruido que avanza con los graves',
 		fragment: TUNNEL_FRAGMENT
+	},
+	{
+		id: 'ripple',
+		label: 'Ondas',
+		description: 'Ondas radiales que se deforman con los medios',
+		fragment: RIPPLES_FRAGMENT
+	},
+	{
+		id: 'particles',
+		label: 'Partículas',
+		description: 'Campo de partículas que fluye hacia fuera con los graves',
+		fragment: PARTICLES_FRAGMENT
 	}
 ];
 
