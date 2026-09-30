@@ -23,11 +23,12 @@ import type { MasterParams } from './types';
 /** Time constant used to smooth every live parameter change. */
 const SMOOTHING_SECONDS = 0.02;
 
-/** Filters, delay times and gains are clamped to sane ranges. */
-const MIN_CUTOFF_HZ = 80;
-const MAX_CUTOFF_HZ = 18000;
-const MIN_RESONANCE = 0.0001;
-const MAX_RESONANCE = 24;
+/** Filters, delay times and gains are clamped to sane ranges. Exported so the UI
+ *  can build sliders over exactly the same domain the chain enforces. */
+export const MIN_CUTOFF_HZ = 80;
+export const MAX_CUTOFF_HZ = 18000;
+export const MIN_RESONANCE = 0.1;
+export const MAX_RESONANCE = 18;
 
 /** Damping inside the delay feedback loop keeps repeats from turning into mush. */
 const DELAY_DAMPING_HZ = 3200;
