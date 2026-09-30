@@ -12,6 +12,7 @@ import {
 	randomizePattern
 } from '$lib/audio/pattern';
 import type { MasterParams, Pattern, TrackId } from '$lib/audio/types';
+import type { ShareState } from '$lib/utils/share';
 
 export type StudioStatus = 'idle' | 'starting' | 'ready' | 'error';
 
@@ -167,6 +168,31 @@ class Studio {
 			this.pattern[track].gates = copy[track].gates;
 			this.pattern[track].notes = copy[track].notes;
 		}
+	}
+
+	/**
+	 * Snapshot of everything worth persisting.
+	 *
+	 * It reads every gate, note and parameter through the reactive proxies, which
+	 * is what lets a `$effect` depend on the whole instrument state with one call
+	 * instead of hand-rolling a subscription.
+	 */
+	toShareState(): ShareState {
+		return {
+			pattern: clonePattern(this.pattern),
+			master: { ...this.master },
+			swing: this.swing
+		};
+	}
+
+	/** Replaces the whole instrument state, e.g. from a shared link. */
+	restoreFrom(state: ShareState): void {
+		this.loadPattern(state.pattern);
+		this.master = { ...state.master };
+		this.swing = state.swing;
+		// The engine reads parameters live, so the restored values only need to be
+		// pushed into the audio graph; no restart is required.
+		this.engine?.applyLiveParams();
 	}
 
 	/** Called by the visualiser so it can read the analyser without owning it. */

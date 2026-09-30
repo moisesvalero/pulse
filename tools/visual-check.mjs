@@ -467,6 +467,9 @@ async function main() {
 		record('audioContextsBeforeStart', await countAudioContexts(page));
 		record('playheadBeforeStart', await page.locator('[data-playhead]').innerText());
 		record('bandsBeforeStart', await sampleBandPeaks(page, 200));
+		// Loading the page must not rewrite the address bar; the hash appears only
+		// once the patch has been edited.
+		record('hashOnLoad', await page.evaluate(() => globalThis.location.hash));
 		await page.screenshot({ path: join(OUT_DIR, 'desktop-start.png'), fullPage: true });
 
 		await page.getByRole('button', { name: /Empezar|Reintentar/i }).click();
@@ -476,6 +479,8 @@ async function main() {
 		record('audioContextsAfterStart', await countAudioContexts(page));
 		record('pauseButtonVisible', await page.getByRole('button', { name: /Pausar/i }).count());
 		record('playheadText', await page.locator('[data-playhead]').innerText());
+		// Well past the save debounce, with no edit made: still no hash.
+		record('hashAfterStartWithoutEdits', await page.evaluate(() => globalThis.location.hash));
 
 		// --- WebGL canvas ---------------------------------------------------
 		const canvasClip = await measureCanvas(page);
@@ -695,6 +700,39 @@ async function main() {
 		await page.getByRole('button', { name: /Demo/i }).click();
 		await page.waitForTimeout(120);
 		record('activeAfterDemo', await page.locator('[data-cell][aria-pressed="true"]').count());
+
+		// --- sharing and persistence ----------------------------------------
+		// Toggle a gate, wait past the save debounce, and the URL must now describe
+		// the patch: that is the whole feature, end to end.
+		await page.locator('[data-cell][data-track="kick"][data-step="1"]').click();
+		await page.waitForTimeout(700);
+
+		const sharedHash = await page.evaluate(() => globalThis.location.hash);
+		record('hashAfterEdit', sharedHash.slice(0, 24));
+		record('hashLooksLikeAPayload', sharedHash.startsWith('#p1.'));
+		record(
+			'statePersistedToStorage',
+			await page.evaluate(() => (globalThis.localStorage.getItem('pulse:state') ?? '').startsWith('p1.'))
+		);
+
+		// Reload the *shared* URL in a clean context: the patch must come back.
+		const sharedUrl = await page.evaluate(() => globalThis.location.href);
+		const restored = await browser.newContext({ viewport: { width: 1440, height: 1024 } });
+		const restoredPage = await restored.newPage();
+		attachDiagnostics(restoredPage);
+		await restoredPage.goto(sharedUrl, { waitUntil: 'networkidle' });
+		record(
+			'sharedLinkRestoresPattern',
+			(await restoredPage
+				.locator('[data-cell][data-track="kick"][data-step="1"]')
+				.getAttribute('aria-pressed')) === 'true'
+		);
+		record(
+			'sharedLinkRestoresParams',
+			await restoredPage.locator('#control-bpm').inputValue()
+		);
+		await restoredPage.screenshot({ path: join(OUT_DIR, 'desktop-shared-link.png') });
+		await restored.close();
 
 		await inspectAccessibility(page);
 		await page.screenshot({ path: join(OUT_DIR, 'desktop-randomized.png'), fullPage: true });

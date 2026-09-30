@@ -4,11 +4,35 @@
 	 * pattern-level actions.
 	 */
 	import { MAX_BPM, MIN_BPM } from '$lib/audio/constants';
+	import { buildShareUrl } from '$lib/stores/persistence';
 	import { studio } from '$lib/stores/studio.svelte';
 	import { cn } from '$lib/utils/cn';
 	import Slider from './Slider.svelte';
 
 	let busy = $state(false);
+	/** Feedback for the share button: idle -> copied (or error) -> idle. */
+	let shareState = $state<'idle' | 'copied' | 'manual'>('idle');
+
+	/**
+	 * Copies a link that reproduces the current patch.
+	 *
+	 * Clipboard access can be refused (insecure context, permissions). When that
+	 * happens the hash is still written into the address bar, so the user can copy
+	 * the URL by hand — hence the distinct "manual" message instead of a failure.
+	 */
+	async function copyLink(): Promise<void> {
+		const url = buildShareUrl(globalThis.location.href, studio.toShareState());
+
+		try {
+			await navigator.clipboard.writeText(url);
+			shareState = 'copied';
+		} catch {
+			globalThis.history.replaceState(null, '', url);
+			shareState = 'manual';
+		}
+
+		setTimeout(() => (shareState = 'idle'), 2600);
+	}
 
 	async function toggle(): Promise<void> {
 		if (busy) return;
@@ -117,4 +141,26 @@
 			Demo
 		</button>
 	</div>
+
+	<button
+		type="button"
+		onclick={copyLink}
+		class="flex w-full items-center justify-center gap-2 rounded-lg border border-hairline bg-panel-raised/40 px-3 py-2 font-display text-[0.6875rem] tracking-[0.12em] text-mist uppercase transition duration-150 ease-out-expo hover:border-accent/50 hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]"
+	>
+		<svg viewBox="0 0 16 16" class="size-3" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6">
+			<path d="M6.5 9.5 9.5 6.5M6 11.5 4.6 12.9a2.4 2.4 0 0 1-3.4-3.4L4.6 6M10 4.5l1.4-1.4a2.4 2.4 0 0 1 3.4 3.4L11.4 10" stroke-linecap="round" />
+		</svg>
+		{#if shareState === 'copied'}
+			Enlace copiado
+		{:else if shareState === 'manual'}
+			Enlace en la barra de direcciones
+		{:else}
+			Copiar enlace del patrón
+		{/if}
+	</button>
+
+	<p aria-live="polite" class="sr-only">
+		{#if shareState === 'copied'}Enlace copiado al portapapeles{:else if shareState === 'manual'
+			}El portapapeles no está disponible; el enlace se ha escrito en la barra de direcciones{/if}
+	</p>
 </section>

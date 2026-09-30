@@ -5,7 +5,53 @@
 	import StudioHeader from '$lib/components/StudioHeader.svelte';
 	import TransportControls from '$lib/components/TransportControls.svelte';
 	import Visualizer from '$lib/components/Visualizer.svelte';
+	import {
+		buildShareUrl,
+		getLocalStorage,
+		resolveInitialState,
+		writeStoredState
+	} from '$lib/stores/persistence';
 	import { studio } from '$lib/stores/studio.svelte';
+
+	/**
+	 * How long to wait after the last edit before touching storage and the URL.
+	 * Gate toggling is a rapid-fire interaction and neither target should be hit
+	 * once per click.
+	 */
+	const SAVE_DEBOUNCE_MS = 400;
+
+	/** Blocks the save effect until the initial restore has run. */
+	let restored = $state(false);
+	/** Set on the first pass after restoring, so loading a page never rewrites the URL. */
+	let skippedInitialSave = false;
+
+	$effect(() => {
+		// Read once, on mount. `$effect` never runs while prerendering, so this is
+		// also the client-only guard for `location` and `localStorage`.
+		const stored = resolveInitialState(globalThis.location.hash, getLocalStorage());
+		if (stored) studio.restoreFrom(stored);
+		restored = true;
+	});
+
+	$effect(() => {
+		// Reading the whole snapshot is what subscribes this effect to every gate,
+		// note and parameter; there is no manual subscription anywhere.
+		const state = studio.toShareState();
+		if (!restored) return;
+		if (!skippedInitialSave) {
+			skippedInitialSave = true;
+			return;
+		}
+
+		const timer = setTimeout(() => {
+			writeStoredState(getLocalStorage(), state);
+			// `replaceState` rather than assigning `location.hash`: the hash would
+			// otherwise push a history entry for every edit.
+			globalThis.history.replaceState(null, '', buildShareUrl(globalThis.location.href, state));
+		}, SAVE_DEBOUNCE_MS);
+
+		return () => clearTimeout(timer);
+	});
 </script>
 
 <!--
