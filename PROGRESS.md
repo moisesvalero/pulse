@@ -187,6 +187,13 @@ No puedo oír nada, pero **sí puedo medir el grafo**. El `AnalyserNode` está a
 6. **El AudioContext sólo se crea con gesto del usuario:** 0 contextos antes del botón, exactamente 1 después (parcheando el constructor desde el propio test).
 7. **Compartir funciona de extremo a extremo:** tras editar, la URL pasa a `#p1.150-60-2561-…`; cargando esa URL en un contexto de navegador **limpio**, el patrón y el BPM vuelven.
 8. **Sin desbordamiento horizontal** a 390 px, **todos los objetivos táctiles ≥24 px**, etiquetas de pista *sticky* al hacer scroll, **0 fallos de contraste** en toda la interfaz.
+9. **El arrastre pinta exactamente lo que cruza:** pasos activos de la pista pad tras el arrastre `[0, 1, 2, 3, 4, 5, 8]` — los 0 y 8 del patrón demo más los 1-5 sobre los que se arrastró.
+
+### Reverificación final (misma sesión, build entregado)
+
+Se volvieron a pasar las cuatro puertas sobre el build exacto que se entrega: `pnpm check` (0 errores, 0 avisos), `pnpm test` (140 tests), `pnpm build` (OK), `pnpm verify:visual` (`problems: []`) y Lighthouse (**99 / 100 / 100 / 100**, FCP 1,4 s, LCP 2,0 s, TBT 0 ms, CLS 0). Un resumen de 27 aserciones sobre `report.json` salió **27/27 en verde**.
+
+En esa pasada se corrigió una aserción demasiado específica del propio verificador: comparaba el número de pasos de pad activos con un `6` fijo, cuando el valor correcto es `7`. Ahora el informe guarda la **lista concreta** de pasos activos y comprueba el invariante real (que el arrastre haya pintado las celdas que cruzó), en lugar de un recuento frágil: un puntero rápido puede saltarse una celda por el hueco de 4 px entre ellas.
 
 ### Lighthouse (build de producción, Chromium headless)
 
