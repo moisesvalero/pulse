@@ -539,10 +539,19 @@ async function main() {
 				steps: 16
 			});
 			await page.mouse.up();
-			record(
-				'padActiveAfterDrag',
-				await page.locator('[data-cell][data-track="pad"][aria-pressed="true"]').count()
+
+			// Which steps ended up active matters, not just how many: an exact
+			// count is flaky because a fast pointer can skip a cell across the
+			// 4 px gap between them. The invariant is that the drag painted the
+			// cells it crossed, and the concrete list makes that inspectable.
+			const activePadSteps = await page.evaluate(() =>
+				[...document.querySelectorAll('[data-cell][data-track="pad"]')]
+					.filter((cell) => cell.getAttribute('aria-pressed') === 'true')
+					.map((cell) => Number(cell.dataset.step))
 			);
+			record('padActiveAfterDrag', activePadSteps.length);
+			record('padActiveAfterDragSteps', activePadSteps);
+			record('dragPaintedCrossedSteps', [1, 2, 3, 4, 5].filter((s) => !activePadSteps.includes(s)).length <= 1);
 		}
 
 		const bassCell = page.locator('[data-cell][data-track="bass"][data-step="0"]');
