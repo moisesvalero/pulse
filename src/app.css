@@ -1,0 +1,136 @@
+@import 'tailwindcss';
+
+/*
+ * Pulse design tokens.
+ * Tailwind v4 reads this `@theme` block and generates utilities from it
+ * (e.g. `--color-void` -> `bg-void`), so the palette lives in exactly one place.
+ */
+@theme {
+	--font-display:
+		'Space Grotesk', 'Segoe UI Variable Display', ui-sans-serif, system-ui, sans-serif;
+	--font-sans: 'Inter', 'Segoe UI Variable Text', ui-sans-serif, system-ui, sans-serif;
+	--font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+	/* Surfaces, from deepest background to raised panel */
+	--color-void: #04050a;
+	--color-abyss: #080a12;
+	--color-panel: #0e1019;
+	--color-panel-raised: #151826;
+	--color-hairline: #232739;
+
+	/* Foreground */
+	--color-chalk: #f2f4fb;
+	--color-mist: #a2a9c0;
+	--color-dim: #6b7391;
+
+	/* Signal colours per voice */
+	--color-voice-bass: #7c5cff;
+	--color-voice-lead: #22d3ee;
+	--color-voice-pad: #f472b6;
+	--color-voice-kick: #fb923c;
+	--color-voice-hat: #a3e635;
+
+	--color-accent: #22d3ee;
+	--color-accent-soft: #67e8f9;
+	--color-magenta: #e879f9;
+
+	--radius-panel: 0.875rem;
+
+	--ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@layer base {
+	html {
+		background-color: var(--color-void);
+		color-scheme: dark;
+	}
+
+	body {
+		background-color: var(--color-void);
+		color: var(--color-chalk);
+		font-family: var(--font-sans);
+		-webkit-font-smoothing: antialiased;
+		text-rendering: optimizeLegibility;
+		overscroll-behavior: none;
+	}
+
+	/* A single, consistent focus ring across the whole app (WCAG 2.4.7). */
+	:focus-visible {
+		outline: 2px solid var(--color-accent);
+		outline-offset: 2px;
+		border-radius: 2px;
+	}
+
+	::selection {
+		background-color: color-mix(in oklab, var(--color-accent) 40%, transparent);
+		color: var(--color-chalk);
+	}
+
+	/* Range inputs are the primary control surface: style them once, here. */
+	input[type='range'] {
+		-webkit-appearance: none;
+		appearance: none;
+		background: transparent;
+		cursor: pointer;
+	}
+
+	input[type='range']::-webkit-slider-runnable-track {
+		height: 0.25rem;
+		border-radius: 999px;
+		background: var(--color-hairline);
+	}
+
+	input[type='range']::-moz-range-track {
+		height: 0.25rem;
+		border-radius: 999px;
+		background: var(--color-hairline);
+	}
+
+	input[type='range']::-webkit-slider-thumb {
+		-webkit-appearance: none;
+		appearance: none;
+		width: 1rem;
+		height: 1rem;
+		margin-top: -0.375rem;
+		border-radius: 999px;
+		background: var(--color-accent);
+		box-shadow:
+			0 0 0 1px color-mix(in oklab, var(--color-void) 80%, transparent),
+			0 0 12px color-mix(in oklab, var(--color-accent) 60%, transparent);
+		transition: transform 120ms var(--ease-out-expo);
+	}
+
+	input[type='range']:hover::-webkit-slider-thumb,
+	input[type='range']:focus-visible::-webkit-slider-thumb {
+		transform: scale(1.15);
+	}
+
+	input[type='range']::-moz-range-thumb {
+		width: 1rem;
+		height: 1rem;
+		border: none;
+		border-radius: 999px;
+		background: var(--color-accent);
+	}
+
+	input[type='range']:disabled {
+		cursor: not-allowed;
+		opacity: 0.4;
+	}
+}
+
+/*
+ * Respect the OS "reduce motion" preference: kill decorative movement, keep
+ * state changes legible. Individual components also read this via
+ * `prefersReducedMotion` to lower visual intensity in the WebGL layer.
+ */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+}
