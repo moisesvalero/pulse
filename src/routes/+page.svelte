@@ -89,7 +89,7 @@
 			<MixPanel />
 		</div>
 
-		<p class="mt-auto pt-2 font-mono text-[0.625rem] leading-relaxed text-mist">
+		<p class="mt-auto pt-2 font-mono text-xs leading-relaxed text-mist">
 			Arrastra sobre la rejilla para pintar pasos · Mayús + clic cambia la nota ·
 			las flechas mueven el foco
 		</p>

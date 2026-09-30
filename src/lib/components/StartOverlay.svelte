@@ -57,7 +57,7 @@
 	>
 		<div class="intro flex w-full max-w-lg flex-col items-start gap-6">
 			<div class="flex flex-col gap-2">
-				<p class="font-mono text-[0.625rem] tracking-[0.35em] text-accent uppercase">
+				<p class="font-mono text-[0.6875rem] tracking-[0.35em] text-accent uppercase">
 					sintetizador · secuenciador · visuales
 				</p>
 				<h1
@@ -101,7 +101,7 @@
 						{studio.error ?? 'No se pudo iniciar el audio.'}
 					</p>
 				{:else}
-					<p class="text-[0.6875rem] leading-relaxed text-dim">
+					<p class="text-xs leading-relaxed text-dim">
 						Al pulsar Empezar se activa el audio del navegador. Se necesita un gesto
 						tuyo: es la única forma de arrancar un <span class="font-mono"
 							>AudioContext</span

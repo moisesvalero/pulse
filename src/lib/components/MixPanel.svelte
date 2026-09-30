@@ -33,10 +33,10 @@
 	class="flex flex-col gap-4 rounded-panel border border-hairline/70 bg-panel/70 p-3 backdrop-blur-md sm:p-4"
 >
 	<div class="flex items-baseline justify-between">
-		<h2 class="font-display text-[0.6875rem] tracking-[0.14em] text-dim uppercase">
+		<h2 class="font-display text-xs tracking-[0.14em] text-dim uppercase">
 			Mezcla
 		</h2>
-		<p class="font-mono text-[0.625rem] text-dim">filtro maestro · envíos</p>
+		<p class="font-mono text-[0.6875rem] text-dim">filtro maestro · envíos</p>
 	</div>
 
 	<div class="grid grid-cols-2 gap-x-4 gap-y-4">

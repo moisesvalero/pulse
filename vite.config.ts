@@ -19,7 +19,9 @@ export default defineConfig({
 				pages: 'build',
 				assets: 'build',
 				fallback: '404.html',
-				precompress: false,
+				// Emits .br and .gz next to every asset, so a static host can serve
+				// compressed responses with no server configuration at all.
+				precompress: true,
 				strict: true
 			})
 		})

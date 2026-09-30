@@ -180,7 +180,7 @@
 					<th
 						scope="col"
 						class={cn(
-							'pb-1 text-center font-mono text-[0.625rem] font-normal tabular-nums transition-colors',
+							'pb-1 text-center font-mono text-[0.6875rem] font-normal tabular-nums transition-colors',
 							studio.currentStep === step ? 'text-accent' : 'text-dim',
 							step % 4 === 0 && studio.currentStep !== step && 'text-mist'
 						)}
@@ -213,7 +213,7 @@
 								style="background-color: {color}; box-shadow: 0 0 8px {color};"
 							></span>
 							<span
-								class="font-display text-[0.6875rem] tracking-[0.1em] text-mist uppercase"
+								class="font-display text-xs tracking-[0.1em] text-mist uppercase"
 							>
 								{TRACK_LABELS[track]}
 							</span>
@@ -241,7 +241,7 @@
 								class={cn(
 									// h-10 on touch: WCAG 2.5.8 asks for 24x24 CSS px minimum
 									// targets, and the width is capped by how many steps fit.
-									'group relative flex h-10 w-full items-center justify-center rounded-[0.4rem] border text-[0.5625rem] transition-[transform,background-color,border-color,box-shadow] duration-150 ease-out-expo sm:h-9',
+									'group relative flex h-10 w-full items-center justify-center rounded-[0.4rem] border text-[0.625rem] transition-[transform,background-color,border-color,box-shadow] duration-150 ease-out-expo sm:h-9',
 									'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent active:scale-95',
 									active
 										? 'border-transparent'

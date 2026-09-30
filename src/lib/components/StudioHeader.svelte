@@ -13,13 +13,13 @@
 		>
 			Pulse
 		</h1>
-		<p class="font-mono text-[0.625rem] tracking-[0.2em] text-dim uppercase">
+		<p class="font-mono text-[0.6875rem] tracking-[0.2em] text-dim uppercase">
 			estudio audiovisual
 		</p>
 	</div>
 
 	<div class="flex items-center gap-3">
-		<p data-playhead class="font-mono text-[0.625rem] text-mist">
+		<p data-playhead class="font-mono text-[0.6875rem] text-mist">
 			{#if studio.currentStep !== null}
 				paso <span class="text-accent">{String(studio.currentStep + 1).padStart(2, '0')}</span
 				> / 16

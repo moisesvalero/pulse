@@ -24,8 +24,22 @@
 	 */
 	const intensity = $derived(reducedMotion ? 0.3 : 1);
 
+	/**
+	 * The renderer only starts once the user has left the start screen.
+	 *
+	 * A permanent full-screen fragment shader is by far the most expensive thing
+	 * on the page, and on the start screen it is almost invisible: the overlay is
+	 * 80% opaque and heavily blurred. Lighthouse measured ~2 s of main-thread
+	 * script evaluation on load, most of it rasterising shader frames that nobody
+	 * can see, so the work simply is not done until it matters.
+	 *
+	 * `idle` is the only state that means "the user has not started yet"; a failed
+	 * start still gets visuals, because they are worth having without audio.
+	 */
+	const shouldRender = $derived(studio.status !== 'idle');
+
 	$effect(() => {
-		if (!canvas) return;
+		if (!canvas || !shouldRender) return;
 
 		const query = globalThis.matchMedia('(prefers-reduced-motion: reduce)');
 		reducedMotion = query.matches;

@@ -64,11 +64,11 @@
 	<div class="flex items-baseline justify-between gap-2">
 		<label
 			for={id}
-			class="font-display text-[0.6875rem] font-medium tracking-[0.14em] text-mist uppercase transition-colors group-hover:text-chalk"
+			class="font-display text-xs font-medium tracking-[0.14em] text-mist uppercase transition-colors group-hover:text-chalk"
 		>
 			{label}
 		</label>
-		<output for={id} class="font-mono text-[0.6875rem] tabular-nums text-dim">
+		<output for={id} class="font-mono text-xs tabular-nums text-dim">
 			{format(value)}
 		</output>
 	</div>

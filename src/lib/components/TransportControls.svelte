@@ -77,7 +77,7 @@
 		</button>
 
 		<div class="flex min-w-0 flex-1 flex-col gap-1">
-			<span class="font-display text-[0.6875rem] tracking-[0.14em] text-dim uppercase">
+			<span class="font-display text-xs tracking-[0.14em] text-dim uppercase">
 				Estado
 			</span>
 			<span class="truncate text-sm text-mist" aria-live="polite">
@@ -122,21 +122,21 @@
 		<button
 			type="button"
 			onclick={() => studio.randomize()}
-			class="flex-1 rounded-lg border border-hairline bg-panel-raised/70 px-3 py-2 font-display text-[0.6875rem] tracking-[0.12em] text-mist uppercase transition duration-150 ease-out-expo hover:border-accent/50 hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.97]"
+			class="flex-1 rounded-lg border border-hairline bg-panel-raised/70 px-3 py-2 font-display text-xs tracking-[0.12em] text-mist uppercase transition duration-150 ease-out-expo hover:border-accent/50 hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.97]"
 		>
 			Aleatorio
 		</button>
 		<button
 			type="button"
 			onclick={() => studio.clear()}
-			class="flex-1 rounded-lg border border-hairline bg-panel-raised/70 px-3 py-2 font-display text-[0.6875rem] tracking-[0.12em] text-mist uppercase transition duration-150 ease-out-expo hover:border-magenta/50 hover:text-magenta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.97]"
+			class="flex-1 rounded-lg border border-hairline bg-panel-raised/70 px-3 py-2 font-display text-xs tracking-[0.12em] text-mist uppercase transition duration-150 ease-out-expo hover:border-magenta/50 hover:text-magenta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.97]"
 		>
 			Limpiar
 		</button>
 		<button
 			type="button"
 			onclick={() => studio.reset()}
-			class="flex-1 rounded-lg border border-hairline bg-panel-raised/70 px-3 py-2 font-display text-[0.6875rem] tracking-[0.12em] text-mist uppercase transition duration-150 ease-out-expo hover:border-mist/50 hover:text-chalk focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.97]"
+			class="flex-1 rounded-lg border border-hairline bg-panel-raised/70 px-3 py-2 font-display text-xs tracking-[0.12em] text-mist uppercase transition duration-150 ease-out-expo hover:border-mist/50 hover:text-chalk focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.97]"
 		>
 			Demo
 		</button>
@@ -145,7 +145,7 @@
 	<button
 		type="button"
 		onclick={copyLink}
-		class="flex w-full items-center justify-center gap-2 rounded-lg border border-hairline bg-panel-raised/40 px-3 py-2 font-display text-[0.6875rem] tracking-[0.12em] text-mist uppercase transition duration-150 ease-out-expo hover:border-accent/50 hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]"
+		class="flex w-full items-center justify-center gap-2 rounded-lg border border-hairline bg-panel-raised/40 px-3 py-2 font-display text-xs tracking-[0.12em] text-mist uppercase transition duration-150 ease-out-expo hover:border-accent/50 hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.98]"
 	>
 		<svg viewBox="0 0 16 16" class="size-3" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6">
 			<path d="M6.5 9.5 9.5 6.5M6 11.5 4.6 12.9a2.4 2.4 0 0 1-3.4-3.4L4.6 6M10 4.5l1.4-1.4a2.4 2.4 0 0 1 3.4 3.4L11.4 10" stroke-linecap="round" />

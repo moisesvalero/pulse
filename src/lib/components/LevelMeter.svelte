@@ -22,11 +22,11 @@
 
 <div class="col-span-2 flex flex-col gap-2">
 	<div class="flex items-baseline justify-between gap-2">
-		<h3 class="font-display text-[0.6875rem] tracking-[0.14em] text-dim uppercase">
+		<h3 class="font-display text-xs tracking-[0.14em] text-dim uppercase">
 			Espectro
 		</h3>
 		<p
-			class="font-mono text-[0.625rem] tabular-nums text-dim"
+			class="font-mono text-[0.6875rem] tabular-nums text-dim"
 			data-render-stats
 			data-fps={Math.round(visuals.fps)}
 			data-scale={visuals.scale}
@@ -38,14 +38,14 @@
 	<div class="flex flex-col gap-1.5" aria-hidden="true">
 		{#each bands as band (band.key)}
 			<div class="flex items-center gap-2" data-band={band.key} data-level={percent(band.level)}>
-				<span class="w-12 shrink-0 font-mono text-[0.5625rem] text-dim">{band.label}</span>
+				<span class="w-12 shrink-0 font-mono text-[0.625rem] text-dim">{band.label}</span>
 				<span class="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-hairline/60">
 					<span
 						class="block h-full rounded-full"
 						style="width: {percent(band.level)}%; background-color: {band.color}; box-shadow: 0 0 8px {band.color};"
 					></span>
 				</span>
-				<span class="w-7 shrink-0 text-right font-mono text-[0.5625rem] tabular-nums text-dim">
+				<span class="w-7 shrink-0 text-right font-mono text-[0.625rem] tabular-nums text-dim">
 					{percent(band.level)}
 				</span>
 			</div>
