@@ -8,7 +8,9 @@
 
 <header class="flex flex-wrap items-center justify-between gap-3">
 	<div class="flex items-baseline gap-3">
-		<h1 class="font-display text-2xl font-semibold tracking-[-0.03em] text-chalk sm:text-3xl">
+		<h1
+			class="bg-linear-to-br from-chalk from-30% to-accent bg-clip-text font-display text-2xl font-semibold tracking-[-0.03em] text-transparent sm:text-3xl"
+		>
 			Pulse
 		</h1>
 		<p class="font-mono text-[0.625rem] tracking-[0.2em] text-dim uppercase">

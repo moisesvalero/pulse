@@ -37,7 +37,7 @@
 			title="{mode.description} (tecla {index + 1})"
 			onclick={() => visuals.setMode(mode.id)}
 			class={cn(
-				'rounded-full px-2.5 py-1 font-display text-[0.625rem] tracking-[0.1em] uppercase transition-colors duration-150 ease-out-expo',
+				'rounded-full px-2.5 py-1 font-display text-[0.625rem] tracking-[0.1em] uppercase transition duration-150 ease-out-expo active:scale-95',
 				'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
 				visuals.mode === mode.id
 					? 'bg-accent/15 text-accent'

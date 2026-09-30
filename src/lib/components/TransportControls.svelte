@@ -33,7 +33,7 @@
 			onclick={toggle}
 			aria-label={studio.playing ? 'Pausar el secuenciador' : 'Reproducir el secuenciador'}
 			class={cn(
-				'group flex size-12 shrink-0 items-center justify-center rounded-full border transition-all duration-200 ease-out-expo',
+				'group flex size-12 shrink-0 items-center justify-center rounded-full border transition-all duration-200 ease-out-expo active:scale-95',
 				'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
 				studio.playing
 					? 'border-accent/60 bg-accent/15 text-accent shadow-[0_0_22px_-4px_var(--color-accent)]'
@@ -98,21 +98,21 @@
 		<button
 			type="button"
 			onclick={() => studio.randomize()}
-			class="flex-1 rounded-lg border border-hairline bg-panel-raised/70 px-3 py-2 font-display text-[0.6875rem] tracking-[0.12em] text-mist uppercase transition-colors duration-150 hover:border-accent/50 hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+			class="flex-1 rounded-lg border border-hairline bg-panel-raised/70 px-3 py-2 font-display text-[0.6875rem] tracking-[0.12em] text-mist uppercase transition duration-150 ease-out-expo hover:border-accent/50 hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.97]"
 		>
 			Aleatorio
 		</button>
 		<button
 			type="button"
 			onclick={() => studio.clear()}
-			class="flex-1 rounded-lg border border-hairline bg-panel-raised/70 px-3 py-2 font-display text-[0.6875rem] tracking-[0.12em] text-mist uppercase transition-colors duration-150 hover:border-magenta/50 hover:text-magenta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+			class="flex-1 rounded-lg border border-hairline bg-panel-raised/70 px-3 py-2 font-display text-[0.6875rem] tracking-[0.12em] text-mist uppercase transition duration-150 ease-out-expo hover:border-magenta/50 hover:text-magenta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.97]"
 		>
 			Limpiar
 		</button>
 		<button
 			type="button"
 			onclick={() => studio.reset()}
-			class="flex-1 rounded-lg border border-hairline bg-panel-raised/70 px-3 py-2 font-display text-[0.6875rem] tracking-[0.12em] text-mist uppercase transition-colors duration-150 hover:border-mist/50 hover:text-chalk focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+			class="flex-1 rounded-lg border border-hairline bg-panel-raised/70 px-3 py-2 font-display text-[0.6875rem] tracking-[0.12em] text-mist uppercase transition duration-150 ease-out-expo hover:border-mist/50 hover:text-chalk focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.97]"
 		>
 			Demo
 		</button>

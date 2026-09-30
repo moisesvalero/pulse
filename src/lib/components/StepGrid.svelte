@@ -231,11 +231,11 @@
 								onkeydown={handleKeyDown}
 								class={cn(
 									'group relative flex h-9 w-full items-center justify-center rounded-[0.4rem] border text-[0.5625rem] transition-[transform,background-color,border-color,box-shadow] duration-150 ease-out-expo',
-									'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent',
+									'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent active:scale-95',
 									active
 										? 'border-transparent'
 										: cn(
-												'border-hairline/80 bg-panel-raised/50 hover:border-mist/40 hover:bg-panel-raised',
+												'border-hairline/80 bg-panel-raised/50 hover:-translate-y-px hover:border-mist/40 hover:bg-panel-raised',
 												step % 4 === 0 && 'bg-panel-raised/80'
 											),
 									playing && 'scale-[1.06]'

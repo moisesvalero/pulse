@@ -60,13 +60,13 @@ class Studio {
 				getMasterParams: () => this.master,
 				getSwing: () => this.swing
 			});
-			this.status = 'ready';
 		} catch (cause) {
-			this.status = 'error';
-			this.error = cause instanceof Error ? cause.message : 'No se pudo iniciar el audio.';
+			this.engine = null;
+			this.fail(cause, 'No se pudo iniciar el audio.');
 			return;
 		}
 
+		this.status = 'ready';
 		await this.play();
 	}
 
@@ -76,9 +76,25 @@ class Studio {
 			return;
 		}
 
-		await this.engine.play();
+		try {
+			await this.engine.play();
+		} catch (cause) {
+			// Browsers can refuse to resume a context that was not created inside a
+			// gesture, and the rejection has to reach the start screen instead of
+			// becoming an unhandled promise.
+			this.fail(cause, 'El navegador bloqueó el audio. Vuelve a pulsar Empezar.');
+			return;
+		}
+
 		this.playing = this.engine.isPlaying;
 		this.startFrameLoop();
+	}
+
+	private fail(cause: unknown, fallback: string): void {
+		this.status = 'error';
+		this.playing = false;
+		this.stopFrameLoop();
+		this.error = cause instanceof Error ? cause.message : fallback;
 	}
 
 	pause(): void {

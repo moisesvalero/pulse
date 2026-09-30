@@ -1,15 +1,42 @@
 @import 'tailwindcss';
 
 /*
+ * Self-hosted variable fonts (latin subset), served from /fonts.
+ *
+ * No CDN request at runtime: the page works offline and there is no third-party
+ * connection. Both files are SIL Open Font License 1.1 — see
+ * static/fonts/NOTICE.txt for the full licence texts.
+ *
+ * `font-display: swap` means text renders in the fallback immediately and swaps
+ * when the font arrives, so the start screen is never blocked on a download.
+ */
+@font-face {
+	font-family: 'Space Grotesk';
+	font-style: normal;
+	font-weight: 300 700;
+	font-display: swap;
+	src: url('/fonts/space-grotesk-latin.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Inter';
+	font-style: normal;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('/fonts/inter-latin.woff2') format('woff2');
+}
+
+/*
  * Pulse design tokens.
  * Tailwind v4 reads this `@theme` block and generates utilities from it
  * (e.g. `--color-void` -> `bg-void`), so the palette lives in exactly one place.
  */
 @theme {
-	--font-display:
-		'Space Grotesk', 'Segoe UI Variable Display', ui-sans-serif, system-ui, sans-serif;
+	--font-display: 'Space Grotesk', 'Segoe UI Variable Display', ui-sans-serif, system-ui, sans-serif;
 	--font-sans: 'Inter', 'Segoe UI Variable Text', ui-sans-serif, system-ui, sans-serif;
-	--font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+	/* Numeric readouts only: the platform monospace is excellent and saves 40 kB
+	   of download for something that renders at 10px. */
+	--font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
 
 	/* Surfaces, from deepest background to raised panel */
 	--color-void: #04050a;

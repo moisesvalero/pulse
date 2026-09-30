@@ -1,17 +1,29 @@
 #!/usr/bin/env node
 /**
- * Visual and runtime verification for Pulse.
+ * Visual, audio and runtime verification for Pulse.
  *
- * Loads the built site in headless Chromium, drives the real UI (grid painting,
- * transport, drag, mobile viewport, reduced motion) and fails loudly on any
- * console error, page error or failed request.
+ * Loads the built site in headless Chromium and drives the real UI: start screen,
+ * grid painting, transport, live parameter tweaks, the three visual modes, the
+ * performance back-off, a mobile viewport and reduced motion. It fails loudly on
+ * any console error, page error or failed request.
+ *
+ * It also measures the audio graph objectively, which is the closest a machine
+ * can get to "does it make sound":
+ *   - patches `AudioContext` to count how many contexts get created, proving the
+ *     start screen really is the user gesture that unlocks audio
+ *   - reads the spectrum meter, which publishes the exact numbers the fragment
+ *     shader receives
+ *   - compares the mean brightness of canvas frames while playing and while
+ *     silent, proving the audio drives the picture
+ *   - checks the graph falls to exactly zero once the delay and reverb tails end,
+ *     which would catch a stuck oscillator or a DC leak
  *
  * Playwright is intentionally **not** a project dependency: it is a verification
  * tool that the app does not need. The script looks for an existing install in
  * node_modules, then in the npx cache. Run it with:
  *
  *   python3 -m http.server 4173 --directory build   # in one shell
- *   node tools/visual-check.mjs                     # in another
+ *   pnpm verify:visual                              # in another
  *
  * Any static server works, but prefer a disk-backed one: `vite preview`
  * snapshots the build directory at startup, so after a rebuild it keeps serving
@@ -50,13 +62,88 @@ function hash(buffer) {
 	return createHash('sha256').update(buffer).digest('hex');
 }
 
+/** Finds an importable playwright, preferring an explicit path. */
+async function loadPlaywright() {
+	const candidates = [];
+
+	if (process.env.PLAYWRIGHT_PATH) candidates.push(process.env.PLAYWRIGHT_PATH);
+
+	const require = createRequire(import.meta.url);
+	try {
+		candidates.push(require.resolve('playwright'));
+	} catch {
+		// Not a project dependency: fall through to the npx cache.
+	}
+
+	const npxRoot = join(homedir(), '.npm', '_npx');
+	try {
+		for (const entry of await readdir(npxRoot)) {
+			candidates.push(join(npxRoot, entry, 'node_modules', 'playwright', 'index.js'));
+		}
+	} catch {
+		// No npx cache on this machine.
+	}
+
+	for (const candidate of candidates) {
+		try {
+			const module = await import(pathToFileURL(candidate).href);
+			const playwright = module.default ?? module;
+			if (playwright.chromium) return playwright;
+		} catch {
+			// Try the next candidate.
+		}
+	}
+
+	throw new Error(
+		'Could not find playwright. Install it (pnpm add -D playwright) or set PLAYWRIGHT_PATH.'
+	);
+}
+
+function attachDiagnostics(target) {
+	target.on('console', (message) => {
+		if (message.type() === 'error') fail(`console error: ${message.text()}`);
+		if (message.type() === 'warning' && /hydration|a11y/i.test(message.text())) {
+			fail(`console warning: ${message.text()}`);
+		}
+	});
+	target.on('pageerror', (error) => fail(`page error: ${error.message}`));
+	target.on('requestfailed', (request) =>
+		fail(`request failed: ${request.url()} (${request.failure()?.errorText ?? 'unknown'})`)
+	);
+}
+
+/**
+ * Counts `AudioContext` constructions. Browsers only allow audio to start inside a
+ * user gesture, so "zero contexts before the button, one after" is the objective
+ * proof that the start screen is doing its job.
+ */
+async function installAudioContextCounter(page) {
+	await page.addInitScript(() => {
+		const Original = globalThis.AudioContext;
+		globalThis.__pulseAudioContexts = 0;
+
+		if (typeof Original !== 'function') return;
+
+		globalThis.AudioContext = class extends Original {
+			constructor(...args) {
+				super(...args);
+				globalThis.__pulseAudioContexts += 1;
+			}
+		};
+	});
+}
+
+async function countAudioContexts(page) {
+	return page.evaluate(() => globalThis.__pulseAudioContexts ?? 0);
+}
+
 /** Highest level seen per band over `durationMs`, as a percentage. */
 async function sampleBandPeaks(page, durationMs) {
-	return page.evaluate(async (window) => {
+	return page.evaluate(async (windowMs) => {
 		const peaks = { bass: 0, mid: 0, treble: 0 };
 		const started = performance.now();
 
-		while (performance.now() - started < window) {
+		while (performance.now() - started < windowMs) {
 			for (const element of document.querySelectorAll('[data-band]')) {
 				const key = element.dataset.band;
 				if (key !== 'bass' && key !== 'mid' && key !== 'treble') continue;
@@ -126,40 +213,78 @@ async function meanBrightness(page, frames) {
 	};
 }
 
-/** Finds an importable playwright, preferring an explicit path. */
-async function loadPlaywright() {
-	const candidates = [];
-
-	if (process.env.PLAYWRIGHT_PATH) candidates.push(process.env.PLAYWRIGHT_PATH);
-
-	const require = createRequire(import.meta.url);
-	try {
-		candidates.push(require.resolve('playwright'));
-	} catch {
-		// Not a project dependency: fall through to the npx cache.
+/** Centre of the canvas: every mode is radial, so that is where the detail is. */
+async function measureCanvas(page) {
+	const box = await page.locator('canvas').boundingBox();
+	if (!box) {
+		fail('The visualiser canvas was not found.');
+		return { x: 0, y: 0, width: 640, height: 360 };
 	}
 
-	const npxRoot = join(homedir(), '.npm', '_npx');
-	try {
-		for (const entry of await readdir(npxRoot)) {
-			candidates.push(join(npxRoot, entry, 'node_modules', 'playwright', 'index.js'));
-		}
-	} catch {
-		// No npx cache on this machine.
-	}
+	const width = Math.round(Math.min(box.width, 820));
+	const height = Math.round(Math.min(box.height, 480));
 
-	for (const candidate of candidates) {
-		try {
-			const module = await import(pathToFileURL(candidate).href);
-			const playwright = module.default ?? module;
-			if (playwright.chromium) return playwright;
-		} catch {
-			// Try the next candidate.
-		}
-	}
+	return {
+		x: Math.round(box.x + (box.width - width) / 2),
+		y: Math.round(box.y + (box.height - height) / 2),
+		width,
+		height
+	};
+}
 
-	throw new Error(
-		'Could not find playwright. Install it (pnpm add -D playwright) or set PLAYWRIGHT_PATH.'
+/** Static accessibility checks that do not need a full axe run. */
+async function inspectAccessibility(page) {
+	record(
+		'accessibleControls',
+		await page.evaluate(() => {
+			const issues = [];
+
+			for (const button of document.querySelectorAll('button')) {
+				const name = button.getAttribute('aria-label') ?? button.textContent.trim();
+				if (!name) issues.push('button without an accessible name');
+			}
+
+			for (const slider of document.querySelectorAll('input[type="range"]')) {
+				const id = slider.getAttribute('id');
+				if (!id || !document.querySelector(`label[for="${id}"]`)) {
+					issues.push(`slider without a label: ${id ?? '(no id)'}`);
+				}
+			}
+
+			const levels = [...document.querySelectorAll('h1,h2,h3,h4,h5,h6')].map((element) =>
+				Number(element.tagName[1])
+			);
+			if (levels.filter((level) => level === 1).length !== 1) {
+				issues.push(`expected exactly one h1, found ${levels.filter((l) => l === 1).length}`);
+			}
+
+			return issues;
+		})
+	);
+
+	record(
+		'focusVisibleRulePresent',
+		await page.evaluate(() => {
+			// Tailwind emits its rules inside `@layer`, so the walk has to recurse
+			// instead of only looking at top-level rules.
+			const walk = (rules) => {
+				for (const rule of rules) {
+					if (rule.selectorText?.includes(':focus-visible')) return true;
+					if (rule.cssRules && walk(rule.cssRules)) return true;
+				}
+				return false;
+			};
+
+			for (const sheet of document.styleSheets) {
+				try {
+					if (walk(sheet.cssRules)) return true;
+				} catch {
+					// Cross-origin sheet; nothing to inspect.
+				}
+			}
+
+			return false;
+		})
 	);
 }
 
@@ -174,59 +299,60 @@ async function main() {
 		const context = await browser.newContext({ viewport: { width: 1440, height: 1024 } });
 		const page = await context.newPage();
 		attachDiagnostics(page);
+		await installAudioContextCounter(page);
 
 		const response = await page.goto(BASE_URL, { waitUntil: 'networkidle' });
 		record('httpStatus', response?.status() ?? null);
 		record('title', await page.title());
-		record('heading', await page.locator('h1').innerText());
-
-		// Every lane and step must be rendered and addressable.
+		record('heading', await page.locator('h1').first().innerText());
 		record('cellCount', await page.locator('[data-cell]').count());
 		record('initialActiveCells', await page.locator('[data-cell][aria-pressed="true"]').count());
 
-		await page.screenshot({ path: join(OUT_DIR, 'desktop-idle.png'), fullPage: true });
+		// --- start screen ----------------------------------------------------
+		// Audio must not exist yet: no AudioContext, no playhead, silent meter.
+		record('startOverlayVisible', await page.locator('[data-start-overlay]').count());
+		record('audioContextsBeforeStart', await countAudioContexts(page));
+		record('playheadBeforeStart', await page.locator('[data-playhead]').innerText());
+		record('bandsBeforeStart', await sampleBandPeaks(page, 200));
+		await page.screenshot({ path: join(OUT_DIR, 'desktop-start.png'), fullPage: true });
+
+		await page.getByRole('button', { name: /Empezar|Reintentar/i }).click();
+		await page.waitForTimeout(1300);
+
+		record('startOverlayDismissed', (await page.locator('[data-start-overlay]').count()) === 0);
+		record('audioContextsAfterStart', await countAudioContexts(page));
+		record('pauseButtonVisible', await page.getByRole('button', { name: /Pausar/i }).count());
+		record('playheadText', await page.locator('[data-playhead]').innerText());
 
 		// --- WebGL canvas ---------------------------------------------------
-		// Two clipped frames of the canvas: identical bytes would mean the
-		// shader is not running (or the CSS fallback is showing).
-		const canvasBox = await page.locator('canvas').boundingBox();
-		// Kept in the outer scope: the audio-reactivity check below reuses it.
-		// Centred on the canvas: every mode is radial, so the interesting pixels are
-		// around the middle, not in the top-left corner.
-		const clipSize = { width: 820, height: 480 };
-		const canvasClip = canvasBox
-			? {
-					x: Math.round(canvasBox.x + (canvasBox.width - clipSize.width) / 2),
-					y: Math.round(canvasBox.y + (canvasBox.height - clipSize.height) / 2),
-					width: Math.round(Math.min(canvasBox.width, clipSize.width)),
-					height: Math.round(Math.min(canvasBox.height, clipSize.height))
-				}
-			: { x: 0, y: 0, width: 640, height: 360 };
+		const canvasClip = await measureCanvas(page);
 
-		if (!canvasBox) {
-			fail('The visualiser canvas was not found.');
-		} else {
-			record('canvasHasWebgl', await page.evaluate(() => {
+		record(
+			'canvasHasWebgl',
+			await page.evaluate(() => {
 				const element = document.querySelector('canvas');
 				return element instanceof HTMLCanvasElement
 					? element.getContext('webgl') instanceof WebGLRenderingContext
 					: false;
-			}));
-			record('canvasBackingStore', await page.evaluate(() => {
+			})
+		);
+		record(
+			'canvasBackingStore',
+			await page.evaluate(() => {
 				const element = document.querySelector('canvas');
 				return element instanceof HTMLCanvasElement
 					? { width: element.width, height: element.height }
 					: null;
-			}));
+			})
+		);
 
-			const first = await page.screenshot({ clip: canvasClip });
-			await page.waitForTimeout(420);
-			const second = await page.screenshot({ clip: canvasClip });
+		const firstFrame = await page.screenshot({ clip: canvasClip });
+		await page.waitForTimeout(420);
+		const secondFrame = await page.screenshot({ clip: canvasClip });
+		record('canvasAnimates', hash(firstFrame) !== hash(secondFrame));
+		await writeFile(join(OUT_DIR, 'canvas-frame.png'), secondFrame);
 
-			record('canvasAnimates', hash(first) !== hash(second));
-			record('canvasFrameBytes', first.length);
-			await writeFile(join(OUT_DIR, 'canvas-frame.png'), second);
-		}
+		await page.screenshot({ path: join(OUT_DIR, 'desktop-playing.png') });
 
 		// --- grid interaction -----------------------------------------------
 		const kickStep2 = page.locator('[data-cell][data-track="kick"][data-step="1"]');
@@ -236,7 +362,6 @@ async function main() {
 		await kickStep2.click();
 		record('kickStep2Restored', await kickStep2.getAttribute('aria-pressed'));
 
-		// Drag painting across one lane.
 		const paintStart = await page
 			.locator('[data-cell][data-track="pad"][data-step="1"]')
 			.boundingBox();
@@ -247,7 +372,10 @@ async function main() {
 		if (!paintStart || !paintEnd) {
 			fail('Could not measure the grid cells for the drag test.');
 		} else {
-			await page.mouse.move(paintStart.x + paintStart.width / 2, paintStart.y + paintStart.height / 2);
+			await page.mouse.move(
+				paintStart.x + paintStart.width / 2,
+				paintStart.y + paintStart.height / 2
+			);
 			await page.mouse.down();
 			await page.mouse.move(paintEnd.x + paintEnd.width / 2, paintEnd.y + paintEnd.height / 2, {
 				steps: 16
@@ -259,48 +387,24 @@ async function main() {
 			);
 		}
 
-		// Keyboard: shift+Enter on a melodic cell must change its note.
 		const bassCell = page.locator('[data-cell][data-track="bass"][data-step="0"]');
-		const noteBefore = await bassCell.getAttribute('aria-label');
+		record('bassNoteBefore', await bassCell.getAttribute('aria-label'));
 		await bassCell.focus();
 		await page.keyboard.press('Shift+Enter');
-		record('bassNoteBefore', noteBefore);
 		record('bassNoteAfter', await bassCell.getAttribute('aria-label'));
 
-		// Arrow keys move focus without activating anything.
 		await page.keyboard.press('ArrowRight');
-		record('focusAfterArrow', await page.evaluate(() => {
-			const active = document.activeElement;
-			return active instanceof HTMLElement
-				? `${active.dataset.track}:${active.dataset.step}`
-				: null;
-		}));
+		record(
+			'focusAfterArrow',
+			await page.evaluate(() => {
+				const active = document.activeElement;
+				return active instanceof HTMLElement
+					? `${active.dataset.track}:${active.dataset.step}`
+					: null;
+			})
+		);
 
-		// --- transport ------------------------------------------------------
-		await page.getByRole('button', { name: /Reproducir/i }).click();
-		await page.waitForTimeout(1200);
-
-		record('pauseButtonVisible', await page.getByRole('button', { name: /Pausar/i }).count());
-		record('playheadText', await page.locator('[data-playhead]').innerText());
-		record('audioDebug', await readAudioDebug(page));
-
-		await page.screenshot({ path: join(OUT_DIR, 'desktop-playing.png') });
-
-		// Live tweaks while the transport runs: the audio thread is already
-		// scheduled ahead, so nothing here may throw or stall the playhead.
-		await page.locator('#control-bpm').fill('150');
-		await page.locator('#control-swing').fill('45');
-		await page.locator('#control-cutoff').fill('640');
-		await page.locator('#control-volumen').fill('0.4');
-		await page.waitForTimeout(500);
-		const firstReading = await page.locator('[data-playhead]').innerText();
-		await page.waitForTimeout(700);
-		const secondReading = await page.locator('[data-playhead]').innerText();
-		record('playheadDuringLiveTweaks', [firstReading, secondReading]);
-		record('transportSurvivedLiveTweaks', firstReading !== secondReading);
-		record('bpmAfterTweak', await page.locator('#control-bpm').inputValue());
-
-		// --- visual modes ----------------------------------------------------
+		// --- visual modes ---------------------------------------------------
 		// Each mode must compile and draw something different: identical hashes
 		// would mean the switcher is cosmetic.
 		const modeHashes = {};
@@ -317,27 +421,41 @@ async function main() {
 			const frame = await page.screenshot({ clip: canvasClip });
 			modeHashes[id] = hash(frame).slice(0, 12);
 			await writeFile(join(OUT_DIR, `canvas-mode-${id}.png`), frame);
-			// Full page too, so the mode can be judged against the interface.
 			await page.screenshot({ path: join(OUT_DIR, `mode-${id}-full.png`) });
 		}
 		record('visualModeHashes', modeHashes);
 		record('visualModesAreDistinct', new Set(Object.values(modeHashes)).size === 3);
 
-		// Back to the default before the audio comparison below.
+		// Keyboard shortcut, then back to the default before the audio comparison.
+		await page.keyboard.press('2');
+		await page.waitForTimeout(200);
+		record(
+			'modeAfterKey2',
+			await page.locator('[data-visual-mode="ripple"]').getAttribute('aria-pressed')
+		);
 		await page.locator('[data-visual-mode="tunnel"]').click();
 		await page.waitForTimeout(300);
 
+		// --- live parameter changes -----------------------------------------
+		await page.locator('#control-bpm').fill('150');
+		await page.locator('#control-swing').fill('45');
+		await page.locator('#control-cutoff').fill('640');
+		await page.locator('#control-volumen').fill('0.6');
+		await page.waitForTimeout(500);
+
+		const firstReading = await page.locator('[data-playhead]').innerText();
+		await page.waitForTimeout(700);
+		const secondReading = await page.locator('[data-playhead]').innerText();
+		record('playheadDuringLiveTweaks', [firstReading, secondReading]);
+		record('transportSurvivedLiveTweaks', firstReading !== secondReading);
+		record('bpmAfterTweak', await page.locator('#control-bpm').inputValue());
+		record('cutoffAfterTweak', await page.locator('#control-cutoff').inputValue());
+
 		// --- audio actually reaches the shaders ------------------------------
-		// The meters publish the exact numbers the fragment shader receives, so
-		// non-zero peaks here prove the AnalyserNode is carrying signal.
 		const peaks = await sampleBandPeaks(page, 2600);
 		record('bandPeaksWhilePlaying', peaks);
 		record('analyserHasSignal', peaks.bass > 0 || peaks.mid > 0 || peaks.treble > 0);
 
-		// And the proof that the signal changes the picture: identical renders
-		// would not care about the audio. Mean brightness is compared over a few
-		// frames on both sides, frame-aligned, so the time-based animation cannot
-		// be mistaken for audio reactivity.
 		const litFrames = await sampleCanvasFrames(page, canvasClip, 4, 130);
 		record('meanBrightnessPlaying', await meanBrightness(page, litFrames));
 
@@ -368,23 +486,40 @@ async function main() {
 
 		// --- performance back-off -------------------------------------------
 		// 2560x1440 is enough to push software rasterisation well below the 45 fps
-		// target that the generated report shows above. The controller has to give
-		// up internal resolution on its own, with no user action.
+		// target. The controller has to give up internal resolution on its own,
+		// with no user action at all.
 		record('scaleBeforeLoad', await readScale(page));
 		await page.setViewportSize({ width: 2560, height: 1440 });
 		await page.waitForTimeout(6000);
 		record('renderStatsUnderLoad', await page.locator('[data-render-stats]').innerText());
-		record('scaleUnderLoad', await readScale(page));
-		record('resolutionBacksOff', (await readScale(page)) < 1);
+		const scaleUnderLoad = await readScale(page);
+		record('scaleUnderLoad', scaleUnderLoad);
+		// Either it gave up resolution under the extra load, or it was already at
+		// the floor. Anything else means the controller is not reacting.
+		record(
+			'resolutionBacksOff',
+			scaleUnderLoad < results.scaleBeforeLoad ||
+				(results.scaleBeforeLoad === 0.5 && scaleUnderLoad === 0.5)
+		);
 
 		await page.setViewportSize({ width: 1440, height: 1024 });
 		await page.waitForTimeout(400);
 		await page.screenshot({ path: join(OUT_DIR, 'desktop-large-viewport.png') });
 
-		// --- randomize ------------------------------------------------------
+		// --- pattern actions -------------------------------------------------
 		await page.getByRole('button', { name: /Aleatorio/i }).click();
-		await page.waitForTimeout(100);
+		await page.waitForTimeout(120);
 		record('activeAfterRandomize', await page.locator('[data-cell][aria-pressed="true"]').count());
+
+		await page.getByRole('button', { name: /Limpiar/i }).click();
+		await page.waitForTimeout(120);
+		record('activeAfterClear', await page.locator('[data-cell][aria-pressed="true"]').count());
+
+		await page.getByRole('button', { name: /Demo/i }).click();
+		await page.waitForTimeout(120);
+		record('activeAfterDemo', await page.locator('[data-cell][aria-pressed="true"]').count());
+
+		await inspectAccessibility(page);
 		await page.screenshot({ path: join(OUT_DIR, 'desktop-randomized.png'), fullPage: true });
 
 		await context.close();
@@ -399,10 +534,17 @@ async function main() {
 		const mobilePage = await mobile.newPage();
 		attachDiagnostics(mobilePage);
 		await mobilePage.goto(BASE_URL, { waitUntil: 'networkidle' });
-		record('mobileHorizontalOverflow', await mobilePage.evaluate(
-			() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
-		));
-		await mobilePage.screenshot({ path: join(OUT_DIR, 'mobile-idle.png'), fullPage: true });
+		await mobilePage.screenshot({ path: join(OUT_DIR, 'mobile-start.png'), fullPage: true });
+
+		await mobilePage.getByRole('button', { name: /Empezar|Reintentar/i }).click();
+		await mobilePage.waitForTimeout(1200);
+		record(
+			'mobileHorizontalOverflow',
+			await mobilePage.evaluate(
+				() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+			)
+		);
+		await mobilePage.screenshot({ path: join(OUT_DIR, 'mobile-studio.png'), fullPage: true });
 		await mobile.close();
 
 		// --- reduced motion -------------------------------------------------
@@ -417,7 +559,16 @@ async function main() {
 			'reducedMotionMatches',
 			await reducedPage.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches)
 		);
-		await reducedPage.screenshot({ path: join(OUT_DIR, 'reduced-motion.png') });
+		// The overlay animation must be collapsed by the global CSS rule.
+		record(
+			'reducedMotionCollapsesOverlayAnimation',
+			await reducedPage.evaluate(() => {
+				const overlay = document.querySelector('.overlay');
+				if (!overlay) return null;
+				return Number.parseFloat(getComputedStyle(overlay).animationDuration) < 0.05;
+			})
+		);
+		await reducedPage.screenshot({ path: join(OUT_DIR, 'reduced-motion.png'), fullPage: true });
 		await reduced.close();
 	} finally {
 		await browser.close();
@@ -432,38 +583,6 @@ async function main() {
 		console.error(`\n${problems.length} problem(s) detected.`);
 		process.exitCode = 1;
 	}
-
-	function attachDiagnostics(target) {
-		target.on('console', (message) => {
-			if (message.type() === 'error') fail(`console error: ${message.text()}`);
-			if (message.type() === 'warning' && /hydration|a11y/i.test(message.text())) {
-				fail(`console warning: ${message.text()}`);
-			}
-		});
-		target.on('pageerror', (error) => fail(`page error: ${error.message}`));
-		target.on('requestfailed', (request) =>
-			fail(`request failed: ${request.url()} (${request.failure()?.errorText ?? 'unknown'})`)
-		);
-	}
-}
-
-/**
- * Reads the optional `window.__pulse` developer bridge, when the app is running
- * in dev mode. Returns `null` on a production build, which is expected.
- */
-async function readAudioDebug(page) {
-	return page.evaluate(() => {
-		const bridge = globalThis.__pulse;
-		if (!bridge || typeof bridge.audioEnergy !== 'function') return null;
-
-		const state = bridge.audioState();
-		const samples = [];
-		for (let index = 0; index < 12; index += 1) {
-			samples.push(bridge.audioEnergy());
-		}
-
-		return { state, peakEnergy: Math.max(...samples), samples };
-	});
 }
 
 await main();

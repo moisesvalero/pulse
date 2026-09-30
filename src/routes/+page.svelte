@@ -1,10 +1,19 @@
 <script lang="ts">
 	import MixPanel from '$lib/components/MixPanel.svelte';
+	import StartOverlay from '$lib/components/StartOverlay.svelte';
 	import StepGrid from '$lib/components/StepGrid.svelte';
 	import StudioHeader from '$lib/components/StudioHeader.svelte';
 	import TransportControls from '$lib/components/TransportControls.svelte';
 	import Visualizer from '$lib/components/Visualizer.svelte';
+	import { studio } from '$lib/stores/studio.svelte';
 </script>
+
+<!--
+	Closing the AudioContext on page hide is the only teardown that ever runs for a
+	single-page instrument like this; without it the context would outlive the page
+	on browsers that keep the document alive for the back/forward cache.
+-->
+<svelte:window onpagehide={() => studio.dispose()} />
 
 <Visualizer />
 
@@ -18,6 +27,8 @@
 	aria-hidden="true"
 	class="pointer-events-none fixed inset-0 z-[5] bg-linear-to-b from-void/70 via-transparent to-void/85"
 ></div>
+
+<StartOverlay />
 
 <main class="relative z-10 min-h-dvh">
 	<div
