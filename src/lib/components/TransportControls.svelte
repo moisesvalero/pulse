@@ -30,9 +30,20 @@
 			globalThis.history.replaceState(null, '', url);
 			shareState = 'manual';
 		}
-
-		setTimeout(() => (shareState = 'idle'), 2600);
 	}
+
+	/**
+	 * The feedback timer lives in an effect rather than in the click handler, so
+	 * it is cleared automatically if the component ever goes away. Every other
+	 * resource in the project (animation frames, the interval, the media query
+	 * listener, AudioNodes) is paired with its cleanup in the same way.
+	 */
+	$effect(() => {
+		if (shareState === 'idle') return;
+
+		const timer = setTimeout(() => (shareState = 'idle'), 2600);
+		return () => clearTimeout(timer);
+	});
 
 	async function toggle(): Promise<void> {
 		if (busy) return;
