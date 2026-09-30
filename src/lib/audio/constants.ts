@@ -7,6 +7,18 @@ export const STEPS_PER_BAR = 16;
 /** Order of the lanes in the UI and in the persisted pattern. */
 export const TRACK_IDS = ['bass', 'lead', 'pad', 'kick', 'hat'] as const satisfies readonly TrackId[];
 
+/**
+ * Grid order. Drums sit on top like a drum machine; the persisted order above
+ * stays stable so serialised state never depends on layout choices.
+ */
+export const TRACK_DISPLAY_ORDER = [
+	'kick',
+	'hat',
+	'bass',
+	'lead',
+	'pad'
+] as const satisfies readonly TrackId[];
+
 export const TRACK_LABELS: Record<TrackId, string> = {
 	bass: 'Bass',
 	lead: 'Lead',
@@ -21,6 +33,9 @@ export const MELODIC_TRACK_IDS = ['bass', 'lead', 'pad'] as const;
 export const MIN_BPM = 50;
 export const MAX_BPM = 200;
 export const DEFAULT_BPM = 110;
+
+/** A touch of shuffle by default: it lifts the off-beat hats without swinging the kick. */
+export const DEFAULT_SWING = 0.16;
 
 /** Seconds scheduled ahead of the audio clock on every timer tick. */
 export const SCHEDULE_AHEAD_SECONDS = 0.12;
