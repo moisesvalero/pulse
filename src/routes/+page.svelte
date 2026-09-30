@@ -3,11 +3,14 @@
 	import StepGrid from '$lib/components/StepGrid.svelte';
 	import StudioHeader from '$lib/components/StudioHeader.svelte';
 	import TransportControls from '$lib/components/TransportControls.svelte';
+	import Visualizer from '$lib/components/Visualizer.svelte';
 </script>
 
-<main class="relative min-h-dvh">
+<Visualizer />
+
+<main class="relative z-10 min-h-dvh">
 	<div
-		class="relative z-10 mx-auto flex min-h-dvh w-full max-w-5xl flex-col gap-4 px-3 py-4 sm:px-6 sm:py-8"
+		class="relative mx-auto flex min-h-dvh w-full max-w-5xl flex-col gap-4 px-3 py-4 sm:px-6 sm:py-8"
 	>
 		<StudioHeader />
 

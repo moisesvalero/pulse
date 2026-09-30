@@ -23,6 +23,7 @@
  *   PLAYWRIGHT_PATH  explicit path to a playwright module, if auto-detection fails
  */
 
+import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { mkdir, readdir, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
@@ -43,6 +44,10 @@ function record(name, value) {
 
 function fail(message) {
 	problems.push(message);
+}
+
+function hash(buffer) {
+	return createHash('sha256').update(buffer).digest('hex');
 }
 
 /** Finds an importable playwright, preferring an explicit path. */
@@ -104,6 +109,42 @@ async function main() {
 		record('initialActiveCells', await page.locator('[data-cell][aria-pressed="true"]').count());
 
 		await page.screenshot({ path: join(OUT_DIR, 'desktop-idle.png'), fullPage: true });
+
+		// --- WebGL canvas ---------------------------------------------------
+		// Two clipped frames of the canvas: identical bytes would mean the
+		// shader is not running (or the CSS fallback is showing).
+		const canvasBox = await page.locator('canvas').boundingBox();
+		if (!canvasBox) {
+			fail('The visualiser canvas was not found.');
+		} else {
+			record('canvasHasWebgl', await page.evaluate(() => {
+				const element = document.querySelector('canvas');
+				return element instanceof HTMLCanvasElement
+					? element.getContext('webgl') instanceof WebGLRenderingContext
+					: false;
+			}));
+			record('canvasBackingStore', await page.evaluate(() => {
+				const element = document.querySelector('canvas');
+				return element instanceof HTMLCanvasElement
+					? { width: element.width, height: element.height }
+					: null;
+			}));
+
+			const clip = {
+				x: Math.round(canvasBox.x),
+				y: Math.round(canvasBox.y),
+				width: Math.round(Math.min(canvasBox.width, 900)),
+				height: Math.round(Math.min(canvasBox.height, 520))
+			};
+
+			const first = await page.screenshot({ clip });
+			await page.waitForTimeout(420);
+			const second = await page.screenshot({ clip });
+
+			record('canvasAnimates', hash(first) !== hash(second));
+			record('canvasFrameBytes', first.length);
+			await writeFile(join(OUT_DIR, 'canvas-frame.png'), second);
+		}
 
 		// --- grid interaction -----------------------------------------------
 		const kickStep2 = page.locator('[data-cell][data-track="kick"][data-step="1"]');
