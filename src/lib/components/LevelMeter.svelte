@@ -25,7 +25,12 @@
 		<h3 class="font-display text-[0.6875rem] tracking-[0.14em] text-dim uppercase">
 			Espectro
 		</h3>
-		<p class="font-mono text-[0.625rem] tabular-nums text-dim/70" data-render-stats>
+		<p
+			class="font-mono text-[0.625rem] tabular-nums text-dim/70"
+			data-render-stats
+			data-fps={Math.round(visuals.fps)}
+			data-scale={visuals.scale}
+		>
 			{Math.round(visuals.fps)} fps · {visuals.scale.toFixed(2)}×
 		</p>
 	</div>

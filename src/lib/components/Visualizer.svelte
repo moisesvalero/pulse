@@ -9,6 +9,7 @@
 	import { studio } from '$lib/stores/studio.svelte';
 	import { visuals } from '$lib/stores/visuals.svelte';
 	import { createBandReader, type BandReader } from '$lib/visuals/analysis';
+	import { ResolutionController } from '$lib/visuals/performance';
 	import { SILENT_BANDS, VisualRenderer } from '$lib/visuals/renderer';
 
 	let canvas = $state<HTMLCanvasElement | null>(null);
@@ -38,6 +39,7 @@
 		// means a new analyser, so the reader is rebuilt when that changes.
 		let reader: BandReader | null = null;
 		let readerAnalyser: AnalyserNode | null = null;
+		const resolution = new ResolutionController();
 
 		renderer = VisualRenderer.create({
 			canvas,
@@ -56,7 +58,13 @@
 			},
 			onStats: (stats) => {
 				visuals.fps = stats.fps;
-				visuals.scale = stats.scale;
+
+				// Lower the internal resolution when the frame rate stays under the
+				// target, and give it back after a long healthy stretch.
+				const next = resolution.report(stats.fps);
+				if (next !== null && renderer) renderer.scale = next;
+
+				visuals.scale = renderer?.scale ?? stats.scale;
 			},
 			onBands: (bands) => visuals.setBands(bands)
 		});

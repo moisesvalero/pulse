@@ -69,6 +69,11 @@ async function sampleBandPeaks(page, durationMs) {
 	}, durationMs);
 }
 
+/** Current internal resolution multiplier, as published by the meter. */
+async function readScale(page) {
+	return Number((await page.locator('[data-render-stats]').getAttribute('data-scale')) ?? 1);
+}
+
 /** Screenshots the canvas several times, spaced `intervalMs` apart. */
 async function sampleCanvasFrames(page, clip, count, intervalMs) {
 	const frames = [];
@@ -360,6 +365,21 @@ async function main() {
 		const lit = results.meanBrightnessPlaying?.mean ?? 0;
 		const dark = results.meanBrightnessPaused?.mean ?? 0;
 		record('audioDrivesVisuals', lit > dark * 1.02);
+
+		// --- performance back-off -------------------------------------------
+		// 2560x1440 is enough to push software rasterisation well below the 45 fps
+		// target that the generated report shows above. The controller has to give
+		// up internal resolution on its own, with no user action.
+		record('scaleBeforeLoad', await readScale(page));
+		await page.setViewportSize({ width: 2560, height: 1440 });
+		await page.waitForTimeout(6000);
+		record('renderStatsUnderLoad', await page.locator('[data-render-stats]').innerText());
+		record('scaleUnderLoad', await readScale(page));
+		record('resolutionBacksOff', (await readScale(page)) < 1);
+
+		await page.setViewportSize({ width: 1440, height: 1024 });
+		await page.waitForTimeout(400);
+		await page.screenshot({ path: join(OUT_DIR, 'desktop-large-viewport.png') });
 
 		// --- randomize ------------------------------------------------------
 		await page.getByRole('button', { name: /Aleatorio/i }).click();
