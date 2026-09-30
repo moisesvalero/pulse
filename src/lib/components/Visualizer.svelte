@@ -6,13 +6,15 @@
 	 * is what guarantees the animation frame, the programs, the buffer and the
 	 * GPU context itself are all released if the component ever unmounts.
 	 */
+	import { studio } from '$lib/stores/studio.svelte';
 	import { visuals } from '$lib/stores/visuals.svelte';
+	import { createBandReader, type BandReader } from '$lib/visuals/analysis';
 	import { SILENT_BANDS, VisualRenderer } from '$lib/visuals/renderer';
 
 	let canvas = $state<HTMLCanvasElement | null>(null);
 	let reducedMotion = $state(false);
 
-	/** Non-reactive: the renderer is owned by the effect, not by the markup. */
+	/** Non-reactive: owned by the effect, not by the markup. */
 	let renderer: VisualRenderer | null = null;
 
 	/**
@@ -32,15 +34,31 @@
 		};
 		query.addEventListener('change', onPreferenceChange);
 
+		// The analyser only exists once the engine has started, and a new engine
+		// means a new analyser, so the reader is rebuilt when that changes.
+		let reader: BandReader | null = null;
+		let readerAnalyser: AnalyserNode | null = null;
+
 		renderer = VisualRenderer.create({
 			canvas,
 			getMode: () => visuals.mode,
 			getIntensity: () => intensity,
-			getBands: () => SILENT_BANDS,
+			getBands: () => {
+				const analyser = studio.getAnalyser();
+				if (!analyser) return SILENT_BANDS;
+
+				if (!reader || readerAnalyser !== analyser) {
+					reader = createBandReader(analyser);
+					readerAnalyser = analyser;
+				}
+
+				return reader.read();
+			},
 			onStats: (stats) => {
 				visuals.fps = stats.fps;
 				visuals.scale = stats.scale;
-			}
+			},
+			onBands: (bands) => visuals.setBands(bands)
 		});
 
 		visuals.supported = renderer !== null;
@@ -50,6 +68,8 @@
 			query.removeEventListener('change', onPreferenceChange);
 			renderer?.dispose();
 			renderer = null;
+			reader = null;
+			readerAnalyser = null;
 		};
 	});
 </script>

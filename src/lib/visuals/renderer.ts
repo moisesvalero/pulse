@@ -44,6 +44,11 @@ export interface VisualRendererOptions {
 	getBands: () => VisualBands;
 	/** Reports the measured frame rate roughly twice per second. */
 	onStats?: (stats: RendererStats) => void;
+	/**
+	 * Reports the current bands at ~20 Hz. Deliberately slower than the frame
+	 * rate: the UI only needs to render a meter, not every audio frame.
+	 */
+	onBands?: (bands: VisualBands) => void;
 	/** Internal resolution multiplier. Task C4 lowers it when frames get slow. */
 	scale?: number;
 }
@@ -57,6 +62,8 @@ interface CompiledMode {
 const MAX_FRAME_DELTA_SECONDS = 0.1;
 /** Frames are averaged over this window before reporting an fps figure. */
 const FPS_WINDOW_SECONDS = 0.5;
+/** Bands are pushed to the UI this often, whatever the frame rate is. */
+const BANDS_REPORT_INTERVAL_SECONDS = 0.05;
 
 export class VisualRenderer {
 	private readonly canvas: HTMLCanvasElement;
@@ -70,6 +77,8 @@ export class VisualRenderer {
 	private lastFrameTime = 0;
 	private framesSinceReport = 0;
 	private windowSeconds = 0;
+	private bandsWindowSeconds = 0;
+	private latestBands: VisualBands = SILENT_BANDS;
 	private disposed = false;
 
 	/** Internal resolution multiplier; 1 = full device pixel ratio. */
@@ -153,6 +162,7 @@ export class VisualRenderer {
 		gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
 
 		const bands = this.options.getBands();
+		this.latestBands = bands;
 
 		gl.uniform2f(mode.uniforms.u_resolution, this.canvas.width, this.canvas.height);
 		gl.uniform1f(mode.uniforms.u_time, this.elapsed);
@@ -163,7 +173,17 @@ export class VisualRenderer {
 		gl.drawArrays(gl.TRIANGLES, 0, 6);
 	}
 
+	/** Frame accounting. The two reports are independent so disabling one does
+	 *  not silence the other. */
 	private measure(delta: number): void {
+		if (this.options.onBands) {
+			this.bandsWindowSeconds += delta;
+			if (this.bandsWindowSeconds >= BANDS_REPORT_INTERVAL_SECONDS) {
+				this.options.onBands(this.latestBands);
+				this.bandsWindowSeconds = 0;
+			}
+		}
+
 		if (!this.options.onStats) return;
 
 		this.framesSinceReport += 1;

@@ -107,7 +107,7 @@ void main() {
 	float energy = 0.55 + u_level * 1.3;
 
 	vec3 color = COLOR_VOID;
-	color += COLOR_BASS * haze * 0.60 * energy;
+	color += COLOR_BASS * haze * 0.50 * energy;
 	color += COLOR_LEAD * filaments * (0.70 + u_bands.y * 1.6) * energy;
 	color += COLOR_PAD * pow(filaments, 2.2) * (0.40 + u_bands.z * 1.7);
 
@@ -116,7 +116,7 @@ void main() {
 	color = mix(color, color * vec3(0.55, 1.05, 1.35), smoothstep(3.0, 11.0, depth) * 0.65);
 
 	// The throat of the tunnel: dimly lit at rest, flaring on bass hits.
-	color += COLOR_HAT * smoothstep(0.16, 0.0, radius) * (0.28 + u_bands.x * 1.7);
+	color += COLOR_HAT * smoothstep(0.16, 0.0, radius) * (0.22 + u_bands.x * 1.6);
 
 	gl_FragColor = vec4(vignette(color, uv), 1.0);
 }

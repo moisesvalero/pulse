@@ -6,6 +6,7 @@
 	import { MAX_CUTOFF_HZ, MAX_RESONANCE, MIN_CUTOFF_HZ, MIN_RESONANCE } from '$lib/audio/master';
 	import { studio } from '$lib/stores/studio.svelte';
 	import { fromNormalized, toNormalized } from '$lib/utils/scale';
+	import LevelMeter from './LevelMeter.svelte';
 	import Slider from './Slider.svelte';
 
 	/** The cutoff slider works in thousandths of the normalised position. */
@@ -104,5 +105,7 @@
 			description="Cantidad de reverb de convolución"
 			onInput={(value) => studio.setMaster('reverbMix', value)}
 		/>
+
+		<LevelMeter />
 	</div>
 </section>

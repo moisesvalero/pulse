@@ -50,6 +50,77 @@ function hash(buffer) {
 	return createHash('sha256').update(buffer).digest('hex');
 }
 
+/** Highest level seen per band over `durationMs`, as a percentage. */
+async function sampleBandPeaks(page, durationMs) {
+	return page.evaluate(async (window) => {
+		const peaks = { bass: 0, mid: 0, treble: 0 };
+		const started = performance.now();
+
+		while (performance.now() - started < window) {
+			for (const element of document.querySelectorAll('[data-band]')) {
+				const key = element.dataset.band;
+				if (key !== 'bass' && key !== 'mid' && key !== 'treble') continue;
+				peaks[key] = Math.max(peaks[key], Number(element.dataset.level ?? 0));
+			}
+			await new Promise((resolve) => setTimeout(resolve, 40));
+		}
+
+		return peaks;
+	}, durationMs);
+}
+
+/** Screenshots the canvas several times, spaced `intervalMs` apart. */
+async function sampleCanvasFrames(page, clip, count, intervalMs) {
+	const frames = [];
+	for (let index = 0; index < count; index += 1) {
+		frames.push(await page.screenshot({ clip }));
+		if (index < count - 1) await page.waitForTimeout(intervalMs);
+	}
+	return frames;
+}
+
+/**
+ * Mean brightness of PNG buffers.
+ *
+ * Decoding happens *inside the browser*: it already ships a PNG decoder, so no
+ * image library is needed here, and `getImageData` is the objective measurement.
+ */
+async function meanBrightness(page, frames) {
+	const values = [];
+
+	for (const frame of frames) {
+		values.push(
+			await page.evaluate(async (base64) => {
+				const image = new Image();
+				image.src = `data:image/png;base64,${base64}`;
+				await image.decode();
+
+				const scratch = document.createElement('canvas');
+				scratch.width = image.width;
+				scratch.height = image.height;
+
+				const context = scratch.getContext('2d');
+				if (!context) return 0;
+
+				context.drawImage(image, 0, 0);
+				const { data } = context.getImageData(0, 0, scratch.width, scratch.height);
+
+				let total = 0;
+				for (let index = 0; index < data.length; index += 4) {
+					total += data[index] + data[index + 1] + data[index + 2];
+				}
+
+				return total / (data.length / 4) / 3;
+			}, frame.toString('base64'))
+		);
+	}
+
+	return {
+		mean: values.reduce((sum, value) => sum + value, 0) / values.length,
+		samples: values.map((value) => Number(value.toFixed(2)))
+	};
+}
+
 /** Finds an importable playwright, preferring an explicit path. */
 async function loadPlaywright() {
 	const candidates = [];
@@ -114,6 +185,16 @@ async function main() {
 		// Two clipped frames of the canvas: identical bytes would mean the
 		// shader is not running (or the CSS fallback is showing).
 		const canvasBox = await page.locator('canvas').boundingBox();
+		// Kept in the outer scope: the audio-reactivity check below reuses it.
+		const canvasClip = canvasBox
+			? {
+					x: Math.round(canvasBox.x),
+					y: Math.round(canvasBox.y),
+					width: Math.round(Math.min(canvasBox.width, 900)),
+					height: Math.round(Math.min(canvasBox.height, 520))
+				}
+			: { x: 0, y: 0, width: 640, height: 360 };
+
 		if (!canvasBox) {
 			fail('The visualiser canvas was not found.');
 		} else {
@@ -130,16 +211,9 @@ async function main() {
 					: null;
 			}));
 
-			const clip = {
-				x: Math.round(canvasBox.x),
-				y: Math.round(canvasBox.y),
-				width: Math.round(Math.min(canvasBox.width, 900)),
-				height: Math.round(Math.min(canvasBox.height, 520))
-			};
-
-			const first = await page.screenshot({ clip });
+			const first = await page.screenshot({ clip: canvasClip });
 			await page.waitForTimeout(420);
-			const second = await page.screenshot({ clip });
+			const second = await page.screenshot({ clip: canvasClip });
 
 			record('canvasAnimates', hash(first) !== hash(second));
 			record('canvasFrameBytes', first.length);
@@ -218,9 +292,44 @@ async function main() {
 		record('transportSurvivedLiveTweaks', firstReading !== secondReading);
 		record('bpmAfterTweak', await page.locator('#control-bpm').inputValue());
 
+		// --- audio actually reaches the shaders ------------------------------
+		// The meters publish the exact numbers the fragment shader receives, so
+		// non-zero peaks here prove the AnalyserNode is carrying signal.
+		const peaks = await sampleBandPeaks(page, 2600);
+		record('bandPeaksWhilePlaying', peaks);
+		record('analyserHasSignal', peaks.bass > 0 || peaks.mid > 0 || peaks.treble > 0);
+
+		// And the proof that the signal changes the picture: identical renders
+		// would not care about the audio. Mean brightness is compared over a few
+		// frames on both sides, frame-aligned, so the time-based animation cannot
+		// be mistaken for audio reactivity.
+		const litFrames = await sampleCanvasFrames(page, canvasClip, 4, 130);
+		record('meanBrightnessPlaying', await meanBrightness(page, litFrames));
+
 		await page.getByRole('button', { name: /Pausar/i }).click();
 		await page.waitForTimeout(150);
 		record('playheadAfterPause', await page.locator('[data-playhead]').innerText());
+
+		// Let the delay and reverb tails die out. Measured on this build: the
+		// slowest band (bass) decays 100 -> 99 -> 72 -> 42 -> 16 -> 0 over the
+		// first 3 s, then stays at exactly 0. 3.4 s leaves margin.
+		await page.waitForTimeout(3400);
+		const quietPeaks = await sampleBandPeaks(page, 900);
+		record('bandPeaksAfterPause', quietPeaks);
+		// Reaching exactly zero proves no voice, noise loop or feedback path stays
+		// alive (or leaks DC) after the transport stops.
+		record(
+			'graphFallsSilent',
+			quietPeaks.bass === 0 && quietPeaks.mid === 0 && quietPeaks.treble === 0
+		);
+
+		const darkFrames = await sampleCanvasFrames(page, canvasClip, 4, 130);
+		record('meanBrightnessPaused', await meanBrightness(page, darkFrames));
+		record('renderStats', await page.locator('[data-render-stats]').innerText());
+
+		const lit = results.meanBrightnessPlaying?.mean ?? 0;
+		const dark = results.meanBrightnessPaused?.mean ?? 0;
+		record('audioDrivesVisuals', lit > dark * 1.02);
 
 		// --- randomize ------------------------------------------------------
 		await page.getByRole('button', { name: /Aleatorio/i }).click();
