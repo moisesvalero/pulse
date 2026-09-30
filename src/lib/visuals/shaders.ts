@@ -118,7 +118,7 @@ void main() {
 	// The throat of the tunnel: dimly lit at rest, flaring on bass hits.
 	color += COLOR_HAT * smoothstep(0.16, 0.0, radius) * (0.22 + u_bands.x * 1.6);
 
-	gl_FragColor = vec4(vignette(color, uv), 1.0);
+	gl_FragColor = vec4(vignette(color * u_intensity, uv), 1.0);
 }
 `;
 
@@ -178,7 +178,7 @@ void main() {
 	// which are all brightest at the centre.
 	color += COLOR_HAT * smoothstep(0.26, 0.0, radius) * (0.10 + u_bands.x * 1.0);
 
-	gl_FragColor = vec4(vignette(color, uv), 1.0);
+	gl_FragColor = vec4(vignette(color * u_intensity, uv), 1.0);
 }
 `;
 
@@ -239,6 +239,6 @@ void main() {
 	color += COLOR_LEAD * stars * sparkle * falloff * (0.85 + u_level * 1.5);
 	color += COLOR_PAD * pow(stars, 2.0) * falloff * (0.35 + u_bands.y * 1.4);
 
-	gl_FragColor = vec4(vignette(color, uv), 1.0);
+	gl_FragColor = vec4(vignette(color * u_intensity, uv), 1.0);
 }
 `;

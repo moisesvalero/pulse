@@ -36,7 +36,7 @@
 		<h2 class="font-display text-[0.6875rem] tracking-[0.14em] text-dim uppercase">
 			Mezcla
 		</h2>
-		<p class="font-mono text-[0.625rem] text-dim/70">filtro maestro · envíos</p>
+		<p class="font-mono text-[0.625rem] text-dim">filtro maestro · envíos</p>
 	</div>
 
 	<div class="grid grid-cols-2 gap-x-4 gap-y-4">

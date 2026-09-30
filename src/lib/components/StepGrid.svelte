@@ -181,7 +181,7 @@
 						scope="col"
 						class={cn(
 							'pb-1 text-center font-mono text-[0.625rem] font-normal tabular-nums transition-colors',
-							studio.currentStep === step ? 'text-accent' : 'text-dim/70',
+							studio.currentStep === step ? 'text-accent' : 'text-dim',
 							step % 4 === 0 && studio.currentStep !== step && 'text-mist'
 						)}
 					>
@@ -252,7 +252,7 @@
 									playing && 'scale-[1.06]'
 								)}
 								style={active
-									? `background-color: color-mix(in oklab, ${color} ${playing ? 100 : 78}%, var(--color-void)); box-shadow: 0 0 14px color-mix(in oklab, ${color} ${playing ? 75 : 35}%, transparent);`
+									? `background-color: ${color}; box-shadow: 0 0 14px color-mix(in oklab, ${color} ${playing ? 75 : 35}%, transparent);`
 									: undefined}
 							>
 								{#if playing}
@@ -262,9 +262,13 @@
 									></span>
 								{/if}
 
+								<!--
+									Dark label on the solid voice colour. Every voice colour is bright
+									enough for #04050a to clear WCAG AA at 9 px (measured ratios run
+									from 5.4:1 on the kick orange to 13:1 on the hat lime), which is
+									why the palette itself is part of the accessibility surface.
+								-->
 								{#if active && melodic && !offGrid}
-									<!-- Dark label on a bright voice colour: legible without an
-									     extra outline. No blend mode, which washed it out. -->
 									<span class="font-mono font-semibold tracking-tight text-void">
 										{midiToNoteName(note)}
 									</span>

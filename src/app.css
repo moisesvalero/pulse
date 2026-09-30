@@ -48,10 +48,10 @@
 	/* Foreground */
 	--color-chalk: #f2f4fb;
 	--color-mist: #a2a9c0;
-	--color-dim: #6b7391;
+	--color-dim: #828aa8; /* 6.0:1 on the panel surface: AA even at 10px */
 
 	/* Signal colours per voice */
-	--color-voice-bass: #7c5cff;
+	--color-voice-bass: #9b8cff; /* lightened: the only voice where neither black nor white text hit 4.5:1 */
 	--color-voice-lead: #22d3ee;
 	--color-voice-pad: #f472b6;
 	--color-voice-kick: #fb923c;

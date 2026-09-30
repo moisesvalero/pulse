@@ -26,7 +26,7 @@
 			Espectro
 		</h3>
 		<p
-			class="font-mono text-[0.625rem] tabular-nums text-dim/70"
+			class="font-mono text-[0.625rem] tabular-nums text-dim"
 			data-render-stats
 			data-fps={Math.round(visuals.fps)}
 			data-scale={visuals.scale}

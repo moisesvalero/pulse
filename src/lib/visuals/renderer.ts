@@ -208,8 +208,21 @@ export class VisualRenderer {
 		try {
 			const program = createProgram(this.gl, FULLSCREEN_VERTEX, findVisualMode(id).fragment);
 			const uniforms: Record<string, WebGLUniformLocation | null> = {};
+
 			for (const name of UNIFORM_NAMES) {
-				uniforms[name] = this.gl.getUniformLocation(program, name);
+				const location = this.gl.getUniformLocation(program, name);
+				uniforms[name] = location;
+
+				// A uniform that is declared but never read is stripped by the GLSL
+				// compiler; `getUniformLocation` then returns null and every write to
+				// it becomes a silent no-op. That is exactly how the reduced-motion
+				// dimming once shipped broken, so it is reported as an error: if this
+				// fires, a shader is ignoring a uniform the contract says it honours.
+				if (location === null) {
+					console.error(
+						`[pulse] the "${id}" shader never reads ${name}, so its value is ignored`
+					);
+				}
 			}
 
 			const compiled: CompiledMode = { program, uniforms };

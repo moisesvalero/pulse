@@ -232,6 +232,30 @@ async function measureCanvas(page) {
 	};
 }
 
+/**
+ * Canvas region with nothing on top of it.
+ *
+ * Brightness comparisons run here. Two things dilute a measurement of the shader:
+ * the panels (opaque enough to hide it) and the scrim gradient, which is nearly
+ * opaque at the top and bottom edges. The side margin beside the panels, at mid
+ * height, is the one band where the plain shader output is what reaches the
+ * screen.
+ */
+async function measureCanvasFreeOfUi(page) {
+	const box = await page.locator('canvas').boundingBox();
+	if (!box) {
+		fail('The visualiser canvas was not found.');
+		return { x: 0, y: 0, width: 180, height: 400 };
+	}
+
+	return {
+		x: Math.round(box.x + box.width * 0.02),
+		y: Math.round(box.y + box.height * 0.3),
+		width: Math.round(Math.max(80, box.width * 0.13)),
+		height: Math.round(box.height * 0.4)
+	};
+}
+
 /** Static accessibility checks that do not need a full axe run. */
 async function inspectAccessibility(page) {
 	record(
@@ -258,7 +282,136 @@ async function inspectAccessibility(page) {
 				issues.push(`expected exactly one h1, found ${levels.filter((l) => l === 1).length}`);
 			}
 
+			// Heading levels must not be skipped (h1 -> h3 with no h2).
+			let previous = 0;
+			for (const level of levels) {
+				if (previous !== 0 && level > previous + 1) {
+					issues.push(`heading level jumped from h${previous} to h${level}`);
+				}
+				previous = level;
+			}
+
 			return issues;
+		})
+	);
+
+	/*
+	 * WCAG contrast of every text element against the surface it sits on.
+	 *
+	 * The panel is translucent over the WebGL canvas, so the true background moves
+	 * with the shader. This composites the *declared* colours (walking up the
+	 * ancestors and blending each alpha over the void base) which is the stable,
+	 * checkable part; the scrim and the near-opaque panels are what keep the real
+	 * values close to it.
+	 */
+	record(
+		'contrastRatios',
+		await page.evaluate(() => {
+			/*
+			 * Resolves any CSS colour to sRGB bytes by painting it and reading the
+			 * pixel back. A regex over `rgb()` would miss `color-mix()`, `oklab()` and
+			 * every other modern syntax, and the step cells are painted with
+			 * `color-mix()`, which silently made the audit report 1.00:1.
+			 */
+			const probe = document.createElement('canvas');
+			probe.width = 1;
+			probe.height = 1;
+			const probeContext = probe.getContext('2d', { willReadFrequently: true });
+
+			const parse = (value) => {
+				if (!value || !probeContext) return null;
+				if (value === 'transparent' || value === 'rgba(0, 0, 0, 0)') {
+					return { r: 0, g: 0, b: 0, a: 0 };
+				}
+
+				probeContext.clearRect(0, 0, 1, 1);
+				probeContext.fillStyle = '#000000';
+				probeContext.fillStyle = value;
+				probeContext.fillRect(0, 0, 1, 1);
+
+				const [r, g, b, a] = probeContext.getImageData(0, 0, 1, 1).data;
+				return { r, g, b, a: a / 255 };
+			};
+
+			const over = (top, bottom) => ({
+				r: top.r * top.a + bottom.r * (1 - top.a),
+				g: top.g * top.a + bottom.g * (1 - top.a),
+				b: top.b * top.a + bottom.b * (1 - top.a),
+				a: 1
+			});
+
+			const luminance = ({ r, g, b }) => {
+				const channel = (value) => {
+					const scaled = value / 255;
+					return scaled <= 0.03928 ? scaled / 12.92 : ((scaled + 0.055) / 1.055) ** 2.4;
+				};
+				return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+			};
+
+			const contrast = (a, b) => {
+				const first = luminance(a);
+				const second = luminance(b);
+				return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
+			};
+
+			/** Effective background of an element, walking ancestors upwards. */
+			const background = (element) => {
+				const layers = [];
+				let node = element;
+				while (node instanceof HTMLElement) {
+					const parsed = parse(getComputedStyle(node).backgroundColor);
+					if (parsed && parsed.a > 0) layers.push(parsed);
+					node = node.parentElement;
+				}
+
+				let composited = { r: 4, g: 5, b: 10, a: 1 }; // --color-void
+				for (const layer of layers.reverse()) composited = over(layer, composited);
+				return composited;
+			};
+
+			const failures = [];
+			const samples = {};
+
+			/*
+			 * Only elements that own a text node are audited. A <button> whose label
+			 * lives in a child <span> would otherwise be measured with the button's
+			 * inherited `color` (chalk) instead of the span's, which reported the
+			 * dark note labels as 2.5:1 failures that do not exist on screen.
+			 */
+			const ownsText = (element) =>
+				[...element.childNodes].some(
+					(node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim().length > 0
+				);
+
+			for (const element of document.querySelectorAll('p, span, label, h1, h2, h3, output, div'))
+			{
+				if (!ownsText(element)) continue;
+
+				const text = element.textContent?.trim();
+				if (!text) continue;
+
+				const style = getComputedStyle(element);
+				const foreground = parse(style.color);
+				if (!foreground || foreground.a === 0) continue;
+
+				const size = Number.parseFloat(style.fontSize);
+				const bold = Number.parseInt(style.fontWeight, 10) >= 700;
+				// WCAG "large text": >= 18.66px bold, or >= 24px.
+				const large = size >= 24 || (bold && size >= 18.66);
+				const required = large ? 3 : 4.5;
+
+				const ratio = contrast(over(foreground, { r: 0, g: 0, b: 0, a: 0 }), background(element));
+				if (ratio < required) {
+					failures.push(
+						`"${text.slice(0, 24)}" ${ratio.toFixed(2)}:1 (needs ${required}:1 at ${size}px)`
+					);
+				}
+
+				const key = `${style.color} on ${Math.round(size)}px`;
+				if (!samples[key] || ratio < samples[key]) samples[key] = Number(ratio.toFixed(2));
+			}
+
+			return { failures, samples };
 		})
 	);
 
@@ -456,8 +609,32 @@ async function main() {
 		record('bandPeaksWhilePlaying', peaks);
 		record('analyserHasSignal', peaks.bass > 0 || peaks.mid > 0 || peaks.treble > 0);
 
-		const litFrames = await sampleCanvasFrames(page, canvasClip, 4, 130);
+		// 12 frames over ~3 s: the tunnel swings by ~30% frame to frame and a whole
+		// bar takes 2.2 s at 110 BPM, so a short burst cannot tell a shader change
+		// apart from the animation. Averaging over more than one bar can.
+		const freeClip = await measureCanvasFreeOfUi(page);
+		const litFrames = await sampleCanvasFrames(page, freeClip, 12, 250);
 		record('meanBrightnessPlaying', await meanBrightness(page, litFrames));
+
+		// A/B on the same page, the same audio and the same pattern: emulate the
+		// preference, let the shader pick up the change, and measure again. Comparing
+		// two separate browser contexts would have mixed in different patterns and
+		// different audio levels, which is exactly the noise this avoids.
+		await page.emulateMedia({ reducedMotion: 'reduce' });
+		await page.waitForTimeout(500);
+		const reducedFrames = await sampleCanvasFrames(page, freeClip, 12, 250);
+		record('meanBrightnessReducedMotion', await meanBrightness(page, reducedFrames));
+		// `u_intensity` drops to 0.3, so the shader contribution should fall by
+		// roughly two thirds. 0.75 leaves room for the animation noise while still
+		// failing loudly if the uniform stops reaching the shader — which is exactly
+		// the bug this check exists to catch.
+		record(
+			'reducedMotionDimsVisuals',
+			(results.meanBrightnessReducedMotion?.mean ?? Infinity) <
+				(results.meanBrightnessPlaying?.mean ?? 0) * 0.75
+		);
+		await page.emulateMedia({ reducedMotion: 'no-preference' });
+		await page.waitForTimeout(300);
 
 		await page.getByRole('button', { name: /Pausar/i }).click();
 		await page.waitForTimeout(150);
@@ -476,7 +653,7 @@ async function main() {
 			quietPeaks.bass === 0 && quietPeaks.mid === 0 && quietPeaks.treble === 0
 		);
 
-		const darkFrames = await sampleCanvasFrames(page, canvasClip, 4, 130);
+		const darkFrames = await sampleCanvasFrames(page, freeClip, 6, 200);
 		record('meanBrightnessPaused', await meanBrightness(page, darkFrames));
 		record('renderStats', await page.locator('[data-render-stats]').innerText());
 
