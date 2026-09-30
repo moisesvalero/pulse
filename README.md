@@ -4,7 +4,12 @@
 
 **Interactive audiovisual studio in the browser.** A 16-step sequencer with a hand-written Web Audio synthesiser and WebGL visuals that react to the sound.
 
+**Demo en vivo:** <https://pulse-blond-chi.vercel.app> · **Repositorio:** <https://github.com/moisesvalero/pulse>
+
 [Español](#español) · [English](#english)
+
+> Ambos enlaces llevan al mismo proyecto. El sitio es 100 % estático y se despliega
+> automáticamente en Vercel con cada push a `main`.
 
 ---
 
@@ -50,6 +55,8 @@ El repo ya trae `vercel.json`, así que Vercel sólo tiene que construir y servi
 ```
 
 `framework: null` desactiva el preset de SvelteKit a propósito: ese preset espera `@sveltejs/adapter-vercel`, y aquí el adaptador es `adapter-static` (lo exige el brief), así que el proyecto se trata como sitio estático. No hace falta cambiar el adaptador ni el código.
+
+El proyecto está enlazado con el repositorio de GitHub, así que **cada push a `main` despliega solo**. Para forzar un despliegue a mano:
 
 ```bash
 pnpm dlx vercel link -p pulse --team <tu-equipo>
@@ -220,6 +227,8 @@ Pulse is a portfolio piece: an instrument that fits in a browser tab. You draw a
 
 ### Running it
 
+**Live demo:** <https://pulse-blond-chi.vercel.app> · **Repository:** <https://github.com/moisesvalero/pulse>
+
 Needs **Node 20+** and **pnpm**.
 
 ```bash
@@ -249,6 +258,8 @@ The repo already ships a `vercel.json`, so Vercel only has to build and serve th
 ```
 
 `framework: null` deliberately disables the SvelteKit preset: that preset expects `@sveltejs/adapter-vercel`, and this project uses `adapter-static` (the brief requires it), so it is treated as a plain static site. Neither the adapter nor any code has to change.
+
+The project is linked to the GitHub repository, so **every push to `main` deploys on its own**. To force a deployment by hand:
 
 ```bash
 pnpm dlx vercel link -p pulse --team <your-team>

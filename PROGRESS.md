@@ -242,10 +242,18 @@ CHROME_PATH="$HOME/Library/Caches/ms-playwright/chromium-1243/chrome-mac-arm64/G
 
 ---
 
+## 7.b Despliegue (hecho)
+
+- **Repositorio:** <https://github.com/moisesvalero/pulse> — público, rama `main`, 70 ficheros versionados (572 KB; `node_modules`, `build`, `.svelte-kit` y `.verify` están ignorados).
+- **Vercel:** proyecto `pulse` en el equipo `moisesvs84-6837s-projects`, con **integración Git conectada**: cada push a `main` despliega solo.
+- **Configuración:** `vercel.json` con `framework: null` (el preset de SvelteKit espera `adapter-vercel` y aquí se usa `adapter-static`, así que se trata como sitio estático) y `outputDirectory: build`. `.vercelignore` deja fuera de la subida unos 17 MB de artefactos locales.
+- **URL de producción:** <https://pulse-blond-chi.vercel.app> — comprobada con una petición real: `200`, HTML de 74.954 B idéntico al `build/index.html` local, la fuente se sirve (48.432 B) y no hay pantalla de autenticación.
+- **Nota de método:** el CLI de Vercel avisa de "Deployment Protection is on" y leí `ssoProtection.deploymentType = all_except_custom_domains`. Concluí, sin comprobarlo, que el sitio no era público. **Era falso.** La lección: pedir la URL antes de sacar conclusiones de un aviso del CLI. El usuario tenía razón.
+
 ## 8. Siguiente paso
 
 El checklist está completo. Lo que queda es **decisión humana**, no trabajo pendiente:
 
-1. **Escuchar el instrumento.** Es lo único que ninguna medición puede sustituir. Arrancar `pnpm dev`, pulsar Empezar y juzgar el balance de las cinco voces, el bombo y la reverb.
+1. **Escuchar el instrumento.** Es lo único que ninguna medición puede sustituir. Abrir <https://pulse-blond-chi.vercel.app> (o `pnpm dev`), pulsar Empezar y juzgar el balance de las cinco voces, el bombo y la reverb.
 2. **Decidir el destino de despliegue.** Si es la raíz del dominio, `build/` se puede subir tal cual. Si es un subdirectorio, hay que definir `paths.base` y convertir las rutas de `/fonts/` (R-07).
 3. **Revisar el acabado visual** en un dispositivo real: el agente sólo ha visto capturas de Chromium headless.
