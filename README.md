@@ -35,7 +35,28 @@ pnpm check        # svelte-check: tipos y avisos de accesibilidad
 pnpm test         # vitest: 140 tests de lógica pura
 ```
 
-Para desplegar, sube el contenido de `build/` a cualquier hosting estático (Vercel, Netlify, Cloudflare Pages, GitHub Pages, un bucket S3…). No hace falta runtime de servidor. El build incluye `.br` y `.gz` para cada asset y un `.nojekyll` para GitHub Pages.
+Para desplegar, sube el contenido de `build/` a cualquier hosting estático (Netlify, Cloudflare Pages, GitHub Pages, un bucket S3…). No hace falta runtime de servidor. El build incluye `.br` y `.gz` para cada asset y un `.nojekyll` para GitHub Pages.
+
+#### Despliegue en Vercel
+
+El repo ya trae `vercel.json`, así que Vercel sólo tiene que construir y servir la carpeta estática:
+
+```json
+{
+	"framework": null,
+	"buildCommand": "pnpm run build",
+	"outputDirectory": "build"
+}
+```
+
+`framework: null` desactiva el preset de SvelteKit a propósito: ese preset espera `@sveltejs/adapter-vercel`, y aquí el adaptador es `adapter-static` (lo exige el brief), así que el proyecto se trata como sitio estático. No hace falta cambiar el adaptador ni el código.
+
+```bash
+pnpm dlx vercel link -p pulse --team <tu-equipo>
+pnpm dlx vercel deploy --prod
+```
+
+`.vercelignore` deja fuera de la subida lo que no debe llegar al hosting: `node_modules`, `build`, `.svelte-kit`, los artefactos locales de verificación (`.verify`, unos 17 MB de capturas) y los ficheros de desarrollo (`tools`, `PROGRESS.md`).
 
 > **Despliegue en la raíz del dominio.** El proyecto asume que el sitio se sirve desde `/`. Para publicarlo en un subdirectorio hay que definir `paths.base` en `vite.config.ts` y cambiar las rutas de las fuentes (`/fonts/...`), que ahora mismo son absolutas.
 
@@ -213,7 +234,28 @@ pnpm check        # svelte-check: types and a11y warnings
 pnpm test         # vitest: 140 pure-logic tests
 ```
 
-To deploy, upload the contents of `build/` to any static host (Vercel, Netlify, Cloudflare Pages, GitHub Pages, an S3 bucket…). No server runtime required. The build ships `.br` and `.gz` for every asset plus a `.nojekyll` for GitHub Pages.
+To deploy, upload the contents of `build/` to any static host (Netlify, Cloudflare Pages, GitHub Pages, an S3 bucket…). No server runtime required. The build ships `.br` and `.gz` for every asset plus a `.nojekyll` for GitHub Pages.
+
+#### Deploying to Vercel
+
+The repo already ships a `vercel.json`, so Vercel only has to build and serve the static folder:
+
+```json
+{
+	"framework": null,
+	"buildCommand": "pnpm run build",
+	"outputDirectory": "build"
+}
+```
+
+`framework: null` deliberately disables the SvelteKit preset: that preset expects `@sveltejs/adapter-vercel`, and this project uses `adapter-static` (the brief requires it), so it is treated as a plain static site. Neither the adapter nor any code has to change.
+
+```bash
+pnpm dlx vercel link -p pulse --team <your-team>
+pnpm dlx vercel deploy --prod
+```
+
+`.vercelignore` keeps out of the upload whatever should not reach the host: `node_modules`, `build`, `.svelte-kit`, the local verification artifacts (`.verify`, about 17 MB of screenshots) and the development-only files (`tools`, `PROGRESS.md`).
 
 > **Root deployment.** The project assumes it is served from `/`. Publishing under a subdirectory requires setting `paths.base` in `vite.config.ts` and changing the font paths (`/fonts/...`), which are currently absolute.
 
