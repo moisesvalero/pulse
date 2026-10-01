@@ -4,6 +4,7 @@
 	 * pattern-level actions.
 	 */
 	import { MAX_BPM, MIN_BPM } from '$lib/audio/constants';
+	import { triggerIosAudioUnlock } from '$lib/audio/unlock';
 	import { buildShareUrl } from '$lib/stores/persistence';
 	import { studio } from '$lib/stores/studio.svelte';
 	import { cn } from '$lib/utils/cn';
@@ -48,6 +49,7 @@
 	async function toggle(): Promise<void> {
 		if (busy) return;
 		busy = true;
+		triggerIosAudioUnlock();
 		try {
 			await studio.toggle();
 		} finally {

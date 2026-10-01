@@ -65,13 +65,22 @@ export const MIN_ATTACK_SECONDS = 0.001;
  */
 export function anchorParam(param: AudioParamLike, time: number): void {
 	if (typeof param.cancelAndHoldAtTime === 'function') {
-		param.cancelAndHoldAtTime(time);
-		return;
+		try {
+			param.cancelAndHoldAtTime(time);
+			return;
+		} catch {
+			// WebKit/Safari can throw RangeError if cancelTime is in the past.
+			// Fall through to cancelScheduledValues + setValueAtTime.
+		}
 	}
 
 	const held = param.value;
-	param.cancelScheduledValues(time);
-	param.setValueAtTime(held, time);
+	try {
+		param.cancelScheduledValues(time);
+		param.setValueAtTime(held, time);
+	} catch {
+		// Non-fatal parameter anchor fallback
+	}
 }
 
 /**
@@ -177,13 +186,21 @@ export function schedulePitch(
 	glideSeconds: number
 ): void {
 	if (glideSeconds > 0 && typeof frequency.setTargetAtTime === 'function') {
-		// A new target replaces the previous one; no cancel needed.
-		frequency.setTargetAtTime(hertz, time, glideSeconds / 3);
-		return;
+		try {
+			// A new target replaces the previous one; no cancel needed.
+			frequency.setTargetAtTime(hertz, time, glideSeconds / 3);
+			return;
+		} catch {
+			// Fall back to setValueAtTime if setTargetAtTime throws
+		}
 	}
 
-	frequency.cancelScheduledValues(time);
-	frequency.setValueAtTime(hertz, time);
+	try {
+		frequency.cancelScheduledValues(time);
+		frequency.setValueAtTime(hertz, time);
+	} catch {
+		// Non-fatal parameter fallback
+	}
 }
 
 function clamp01(value: number): number {

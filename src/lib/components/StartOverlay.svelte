@@ -10,6 +10,7 @@
 	 * The exit animation is plain CSS rather than a Svelte transition, so the
 	 * global `prefers-reduced-motion` rule in `app.css` neutralises it for free.
 	 */
+	import { triggerIosAudioUnlock } from '$lib/audio/unlock';
 	import { studio } from '$lib/stores/studio.svelte';
 
 	/** Set once the exit animation has finished, so the overlay leaves the DOM. */
@@ -49,6 +50,7 @@
 	async function handleStart(): Promise<void> {
 		if (busy) return;
 		busy = true;
+		triggerIosAudioUnlock();
 		try {
 			await studio.start();
 		} finally {
@@ -126,6 +128,9 @@
 						<span class="text-mist"
 							>No sonará nada hasta que pulses reproducir.</span
 						>
+						<span class="mt-1 block text-dim/80 text-[0.6875rem]">
+							En iPhone, asegúrate de tener desactivado el interruptor lateral de silencio si no escuchas nada.
+						</span>
 					</p>
 				{/if}
 			</div>

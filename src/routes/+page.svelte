@@ -55,11 +55,18 @@
 </script>
 
 <!--
-	Closing the AudioContext on page hide is the only teardown that ever runs for a
-	single-page instrument like this; without it the context would outlive the page
-	on browsers that keep the document alive for the back/forward cache.
+	Closing the AudioContext when truly leaving the page, or pausing if cached in bfcache
+	so iOS Safari tabs and app switching do not destroy the engine permanently.
 -->
-<svelte:window onpagehide={() => studio.dispose()} />
+<svelte:window
+	onpagehide={(event) => {
+		if (event.persisted) {
+			studio.pause();
+		} else {
+			studio.dispose();
+		}
+	}}
+/>
 
 <Visualizer />
 

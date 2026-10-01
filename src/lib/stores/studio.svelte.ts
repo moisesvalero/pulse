@@ -6,6 +6,7 @@ import {
 	TRACK_IDS
 } from '$lib/audio/constants';
 import { createAudioEngine, isAudioSupported, type AudioEngine } from '$lib/audio/engine';
+import { triggerIosAudioUnlock } from '$lib/audio/unlock';
 import {
 	clonePattern,
 	createDefaultPattern,
@@ -46,6 +47,8 @@ class Studio {
 	 * the Start button. Safe to call twice.
 	 */
 	async start(): Promise<void> {
+		triggerIosAudioUnlock();
+
 		if (this.engine) {
 			await this.play();
 			return;
@@ -85,9 +88,11 @@ class Studio {
 	}
 
 	async play(): Promise<void> {
+		triggerIosAudioUnlock();
+
 		if (!this.engine) {
 			await this.start();
-			return;
+			if (!this.engine) return;
 		}
 
 		try {

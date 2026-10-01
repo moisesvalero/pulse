@@ -3,6 +3,7 @@ import { MELODIC_TRACK_IDS, VOICE_PRESETS } from './constants';
 import { createMasterChain, delaySecondsForBpm, type MasterChain } from './master';
 import { secondsPerStep, Transport, type PlannedStep } from './scheduler';
 import { createSynthVoice, type SynthVoice } from './voice';
+import { unlockAudioContext } from './unlock';
 import type {
 	MasterParams,
 	MelodicTrackId,
@@ -108,10 +109,7 @@ export class AudioEngine {
 	async unlock(): Promise<void> {
 		if (this.disposed) return;
 
-		if (this.context.state === 'suspended') {
-			await this.context.resume();
-		}
-
+		await unlockAudioContext(this.context);
 		this.applyLiveParams();
 	}
 
@@ -177,20 +175,25 @@ export class AudioEngine {
 		const pattern = this.sources.getPattern();
 		const holdSeconds = planned.holdSeconds * MELODIC_GATE_RATIO;
 
+		// WebKit (Safari iOS) strictly throws RangeError if cancelAndHoldAtTime or
+		// automation receives a time in the past. Ensure stepTime is at or ahead of current audio clock.
+		const now = this.context.currentTime;
+		const stepTime = Math.max(planned.time, now + 0.002);
+
 		for (const track of MELODIC_TRACK_IDS) {
 			const lane = pattern[track];
 			if (!lane.gates[planned.step]) continue;
 
 			const midi = lane.notes[planned.step] ?? FALLBACK_MIDI;
-			this.melodic[track].trigger(planned.time, midi, 1, holdSeconds);
+			this.melodic[track].trigger(stepTime, midi, 1, holdSeconds);
 		}
 
 		if (pattern.kick.gates[planned.step]) {
-			this.drums.kick.trigger(planned.time, 1);
+			this.drums.kick.trigger(stepTime, 1);
 		}
 
 		if (pattern.hat.gates[planned.step]) {
-			this.drums.hat.trigger(planned.time, 1);
+			this.drums.hat.trigger(stepTime, 1);
 		}
 	}
 }
@@ -204,10 +207,23 @@ export function createAudioEngine(sources: EngineSources): AudioEngine {
 		throw new Error('Web Audio API is not available in this browser.');
 	}
 
-	const context = new AudioContext({ latencyHint: 'interactive' });
+	const AudioContextClass =
+		globalThis.AudioContext ??
+		(globalThis as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+
+	let context: AudioContext;
+	try {
+		context = new AudioContextClass({ latencyHint: 'interactive' });
+	} catch {
+		context = new AudioContextClass();
+	}
+
 	return new AudioEngine(context, sources);
 }
 
 export function isAudioSupported(): boolean {
-	return typeof globalThis.AudioContext === 'function';
+	return (
+		typeof globalThis.AudioContext === 'function' ||
+		typeof (globalThis as unknown as { webkitAudioContext: unknown }).webkitAudioContext === 'function'
+	);
 }
