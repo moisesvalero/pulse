@@ -472,15 +472,34 @@ async function main() {
 		record('hashOnLoad', await page.evaluate(() => globalThis.location.hash));
 		await page.screenshot({ path: join(OUT_DIR, 'desktop-start.png'), fullPage: true });
 
-		await page.getByRole('button', { name: /Empezar|Reintentar/i }).click();
+		await page.getByRole('button', { name: /Entrar|Reintentar/i }).click();
 		await page.waitForTimeout(1300);
 
 		record('startOverlayDismissed', (await page.locator('[data-start-overlay]').count()) === 0);
 		record('audioContextsAfterStart', await countAudioContexts(page));
-		record('pauseButtonVisible', await page.getByRole('button', { name: /Pausar/i }).count());
-		record('playheadText', await page.locator('[data-playhead]').innerText());
 		// Well past the save debounce, with no edit made: still no hash.
 		record('hashAfterStartWithoutEdits', await page.evaluate(() => globalThis.location.hash));
+
+		// --- entering must be silent -----------------------------------------
+		// Walking into the studio unlocks the audio context (browsers require a
+		// gesture for that) but must not start the music.
+		const silentBands = await sampleBandPeaks(page, 1200);
+		record('playButtonVisibleAfterEntry', await page.getByRole('button', { name: /Reproducir/i }).count());
+		record('statusWhenSilent', await page.locator('[data-transport-status]').innerText());
+		record('bandsWhileSilentAfterEntry', silentBands);
+		record(
+			'silentByDefault',
+			(await page.getByRole('button', { name: /Pausar/i }).count()) === 0 &&
+				silentBands.bass === 0 &&
+				silentBands.mid === 0 &&
+				silentBands.treble === 0
+		);
+
+		// Now play on purpose.
+		await page.getByRole('button', { name: /Reproducir/i }).click();
+		await page.waitForTimeout(1300);
+		record('pauseButtonVisible', await page.getByRole('button', { name: /Pausar/i }).count());
+		record('playheadText', await page.locator('[data-playhead]').innerText());
 
 		// --- WebGL canvas ---------------------------------------------------
 		const canvasClip = await measureCanvas(page);
@@ -760,7 +779,7 @@ async function main() {
 		await mobilePage.goto(BASE_URL, { waitUntil: 'networkidle' });
 		await mobilePage.screenshot({ path: join(OUT_DIR, 'mobile-start.png'), fullPage: true });
 
-		await mobilePage.getByRole('button', { name: /Empezar|Reintentar/i }).click();
+		await mobilePage.getByRole('button', { name: /Entrar|Reintentar/i }).click();
 		await mobilePage.waitForTimeout(1200);
 		record(
 			'mobileHorizontalOverflow',

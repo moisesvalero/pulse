@@ -97,7 +97,15 @@ export class AudioEngine {
 	}
 
 	/** Starts the transport, resuming the context if the browser suspended it. */
-	async play(): Promise<void> {
+	/**
+	 * Wakes the audio context up without starting the transport.
+	 *
+	 * Browsers only allow an `AudioContext` to be created or resumed inside a user
+	 * gesture, so entering the studio has to happen on a click. That click must not
+	 * also start the music: the transport stays stopped until `play()` is called,
+	 * which is why unlocking and playing are two separate operations.
+	 */
+	async unlock(): Promise<void> {
 		if (this.disposed) return;
 
 		if (this.context.state === 'suspended') {
@@ -105,6 +113,12 @@ export class AudioEngine {
 		}
 
 		this.applyLiveParams();
+	}
+
+	async play(): Promise<void> {
+		if (this.disposed) return;
+
+		await this.unlock();
 		this.transport.start();
 	}
 

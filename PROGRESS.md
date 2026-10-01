@@ -253,6 +253,18 @@ CHROME_PATH="$HOME/Library/Caches/ms-playwright/chromium-1243/chrome-mac-arm64/G
 - **Dependabot:** una alerta abierta, severidad **baja**, `cookie@0.6.0` vía `@sveltejs/kit` (GHSA-pxg6-pf52-xh8x, parcheada en 0.7.0). Alcance `development`: no entra en el bundle del navegador y no hay servidor, así que la exposición real es nula. La última estable de SvelteKit (2.70.3) sigue con `^0.6.0`; sólo los pre-releases de SvelteKit 3 usan `cookie@^2`. Decisión: **no** forzar un override fuera del rango del framework; documentarlo y esperar a SvelteKit 3 estable.
 - **Nota de método:** el CLI de Vercel avisa de "Deployment Protection is on" y leí `ssoProtection.deploymentType = all_except_custom_domains`. Concluí, sin comprobarlo, que el sitio no era público. **Era falso.** La lección: pedir la URL antes de sacar conclusiones de un aviso del CLI. El usuario tenía razón.
 
+## 7.c Cambios pedidos tras la entrega (2ª ronda)
+
+1. **Explicación en la primera pantalla.** `StartOverlay` ahora abre con un párrafo que dice qué es Pulse (secuenciador de 16 pasos, sintetizador propio, visuales reactivos, sin ficheros de audio) y tres bloques titulados: *Escribe un patrón*, *Ajusta mientras suena*, *Míralo sonar*.
+2. **Nada suena por defecto.** Se separó `AudioEngine.unlock()` (resume el contexto dentro del gesto, sin arrancar el transporte) de `play()` (arranca el transporte). `Studio.start()` sólo desbloquea. El botón de la pantalla de inicio pasa a llamarse **Entrar** y el estado del reproductor distingue *"En silencio · pulsa reproducir"* (nunca ha sonado) de *"En pausa"* mediante el nuevo `studio.hasPlayed`. **Verificado**: tras entrar, el botón es el de reproducir y los picos de banda son `{0, 0, 0}`.
+3. **Licencia MIT**: fichero `LICENSE` (© 2026 Moisés Valero) y `"license": "MIT"` en `package.json`. Se anotó en `static/fonts/NOTICE.txt` que la MIT **no** cubre las tipografías, que siguen bajo OFL 1.1.
+4. **README ultra profesional**: cabecera centrada con 2 filas de badges (demo, licencia, stack, tests, Lighthouse, 0 dependencias, 0 samples, accesibilidad), imagen hero, índice bilingüe, sección de capturas, diagramas ASCII de la cadena de audio y del flujo de señal, secciones plegables `<details>` para el despliegue, fila de los 12 topics al final enlazando a `github.com/topics/...`, ejemplos de código con rutas a los ficheros del repo y secciones de Licencia y Créditos.
+5. **Capturas reales y reproducibles**: `tools/readme-shots.mjs` (+ script `pnpm docs:shots`) genera `docs/*.png` contra un build en marcha y luego se optimizan a JPEG con `sips` (450 KB en total, frente a 3,8 MB de PNG). Validado: los 24 badges devuelven 200, las 16 rutas relativas existen y las 22 anclas internas resuelven.
+
+**Dos bugs propios encontrados y corregidos en esta ronda**, ambos en el script de capturas:
+- `page.evaluate('() => {...}')` evalúa la cadena como *expresión*: devuelve la función sin llamarla, así que "ocultar la UI" no hacía nada y las primeras capturas de los modos salieron con la interfaz dentro.
+- El selector `[aria-hidden="true"].fixed` coincidía con el **canvas** (que también tiene ambos atributos) antes que con el scrim, así que ocultaba el propio canvas: la captura del modo partículas salió completamente negra. Se arregló con un atributo explícito `data-scrim` en la app.
+
 ## 8. Siguiente paso
 
 El checklist está completo. Lo que queda es **decisión humana**, no trabajo pendiente:

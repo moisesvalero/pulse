@@ -66,7 +66,7 @@
 		<button
 			type="button"
 			onclick={toggle}
-			aria-label={studio.playing ? 'Pausar el secuenciador' : 'Reproducir el secuenciador'}
+			aria-label={studio.playing ? 'Pausar el secuenciador' : 'Reproducir el secuenciador (no suena nada hasta pulsarlo)'}
 			class={cn(
 				'group flex size-12 shrink-0 items-center justify-center rounded-full border transition-all duration-200 ease-out-expo active:scale-95',
 				'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
@@ -91,13 +91,15 @@
 			<span class="font-display text-xs tracking-[0.14em] text-dim uppercase">
 				Estado
 			</span>
-			<span class="truncate text-sm text-mist" aria-live="polite">
+			<span data-transport-status class="truncate text-sm text-mist" aria-live="polite">
 				{#if studio.status === 'error'}
 					{studio.error ?? 'Error de audio'}
 				{:else if studio.playing}
 					Sonando · compás de 16 pasos
-				{:else if studio.status === 'ready'}
+				{:else if studio.status === 'ready' && studio.hasPlayed}
 					En pausa
+				{:else if studio.status === 'ready'}
+					En silencio · pulsa reproducir
 				{:else}
 					Listo para empezar
 				{/if}

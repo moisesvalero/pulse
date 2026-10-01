@@ -2,8 +2,9 @@
 	"name": "pulse",
 	"private": true,
 	"version": "0.1.0",
-	"type": "module",
 	"description": "Interactive audiovisual studio in the browser: 16-step sequencer, custom Web Audio synth and reactive WebGL visuals.",
+	"license": "MIT",
+	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
@@ -14,7 +15,8 @@
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"test:ui": "vitest --ui",
-		"verify:visual": "node tools/visual-check.mjs"
+		"verify:visual": "node tools/visual-check.mjs",
+		"docs:shots": "node tools/readme-shots.mjs"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-static": "^3.0.10",

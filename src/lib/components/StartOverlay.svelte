@@ -32,9 +32,18 @@
 	}
 
 	const features = [
-		'5 voces sintetizadas en vivo: sin samples, sin ficheros de audio',
-		'Scheduler con look-ahead sobre el reloj del AudioContext',
-		'Visuales WebGL propios que reaccionan a graves, medios y agudos'
+		{
+			title: 'Escribe un patrón',
+			body: 'Rejilla de 16 pasos y 5 pistas: bombo, hi-hat, bajo, lead y pad. Clic o arrastra para pintar pasos.'
+		},
+		{
+			title: 'Ajusta mientras suena',
+			body: 'Tempo, swing, filtro, delay y reverb responden en vivo, sin cortes ni clics.'
+		},
+		{
+			title: 'Míralo sonar',
+			body: 'Tres modos visuales WebGL que se mueven con los graves, los medios y los agudos.'
+		}
 	];
 
 	async function handleStart(): Promise<void> {
@@ -66,17 +75,26 @@
 					Pulse
 				</h1>
 				<p class="max-w-md text-sm leading-relaxed text-mist">
-					Un estudio audiovisual que vive en el navegador. Escribe un patrón, ajústalo
-					mientras suena y mira cómo el sonido dibuja la pantalla.
+					Pulse es un <strong class="font-semibold text-chalk">estudio audiovisual</strong> que
+					vive entero en tu navegador: un secuenciador de 16 pasos con un sintetizador
+					propio y visuales que reaccionan al sonido. No se descarga ningún fichero de
+					audio — las cinco voces se generan en tiempo real y la pantalla se dibuja con
+					tus propios graves, medios y agudos.
 				</p>
 			</div>
 
-			<ul class="flex flex-col gap-2">
-				{#each features as feature (feature)}
-					<li class="flex items-start gap-2 text-xs leading-relaxed text-dim">
+			<ul class="flex flex-col gap-3">
+				{#each features as feature (feature.title)}
+					<li class="flex items-start gap-2.5">
 						<span aria-hidden="true" class="mt-1.5 size-1 shrink-0 rounded-full bg-accent"
 						></span>
-						{feature}
+						<span class="text-xs leading-relaxed text-dim">
+							<strong class="font-display font-medium tracking-wide text-mist uppercase">
+								{feature.title}
+							</strong>
+							<br />
+							{feature.body}
+						</span>
 					</li>
 				{/each}
 			</ul>
@@ -93,7 +111,7 @@
 							d="M4 2.6a.9.9 0 0 1 1.36-.77l7.2 4.4a1 1 0 0 1 0 1.71l-7.2 4.4A.9.9 0 0 1 4 11.57Z"
 						/>
 					</svg>
-					{busy ? 'Iniciando…' : studio.status === 'error' ? 'Reintentar' : 'Empezar'}
+					{busy ? 'Preparando…' : studio.status === 'error' ? 'Reintentar' : 'Entrar'}
 				</button>
 
 				{#if studio.status === 'error'}
@@ -102,10 +120,12 @@
 					</p>
 				{:else}
 					<p class="text-xs leading-relaxed text-dim">
-						Al pulsar Empezar se activa el audio del navegador. Se necesita un gesto
-						tuyo: es la única forma de arrancar un <span class="font-mono"
-							>AudioContext</span
-						>.
+						Al pulsar <strong class="font-semibold text-mist">Entrar</strong> se habilita el
+						audio del navegador, porque un <span class="font-mono">AudioContext</span> sólo
+						puede arrancar con un gesto tuyo.
+						<span class="text-mist"
+							>No sonará nada hasta que pulses reproducir.</span
+						>
 					</p>
 				{/if}
 			</div>

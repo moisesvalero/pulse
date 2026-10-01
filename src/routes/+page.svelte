@@ -70,6 +70,7 @@
 	still read.
 -->
 <div
+	data-scrim
 	aria-hidden="true"
 	class="pointer-events-none fixed inset-0 z-[5] bg-linear-to-b from-void/70 via-transparent to-void/85"
 ></div>

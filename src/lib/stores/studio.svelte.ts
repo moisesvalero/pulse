@@ -32,6 +32,11 @@ class Studio {
 	playing = $state(false);
 	/** Step currently sounding, or `null` while stopped. Drives the playhead. */
 	currentStep = $state<number | null>(null);
+	/**
+	 * False until the transport has run at least once. Lets the UI say "silent"
+	 * instead of "paused" when somebody has only just walked in.
+	 */
+	hasPlayed = $state(false);
 
 	private engine: AudioEngine | null = null;
 	private frame: number | null = null;
@@ -68,7 +73,15 @@ class Studio {
 		}
 
 		this.status = 'ready';
-		await this.play();
+
+		// Unlock the audio context inside the user gesture, but stay silent: nothing
+		// should start playing just because somebody walked in. The transport only
+		// starts when the play button is pressed.
+		try {
+			await this.engine.unlock();
+		} catch (cause) {
+			this.fail(cause, 'El navegador bloqueó el audio. Vuelve a pulsar Entrar.');
+		}
 	}
 
 	async play(): Promise<void> {
@@ -88,6 +101,7 @@ class Studio {
 		}
 
 		this.playing = this.engine.isPlaying;
+		if (this.playing) this.hasPlayed = true;
 		this.startFrameLoop();
 	}
 

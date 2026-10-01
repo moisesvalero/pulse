@@ -22,3 +22,6 @@ for each is in the following files.
   OFL-SpaceGrotesk.txt
   OFL-Inter.txt
 
+The MIT licence that covers the source code of Pulse does NOT apply to these
+font files: Space Grotesk and Inter keep their own SIL Open Font License 1.1,
+which is what allows them to be redistributed here.

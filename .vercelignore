@@ -19,6 +19,9 @@ tools
 # Notes written by the agent that built this, not part of the site
 PROGRESS.md
 
+# README screenshots: they only exist to render on GitHub
+docs
+
 # Token local que crea el propio CLI de Vercel al enlazar el proyecto
 .env*.local
 .vercel
